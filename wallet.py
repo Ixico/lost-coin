@@ -2,7 +2,7 @@ import os, crypto
 
 WALLET_PATH = 'wallet'
 METADATA_PATH = os.path.join(WALLET_PATH, 'metadata.txt')
-IDENTITY_PATH = os.path.join(WALLET_PATH, 'identity.txt')
+IDENTITY_PATH = os.path.join(WALLET_PATH, 'identity')
 
 
 def exists():
@@ -26,6 +26,6 @@ def unlock(password):
 
 
 
-def create_identity():
-    with open(IDENTITY_PATH, 'a') as file:
-        file.write(key_info)
+def create_identity(name):
+    with open(os.path.join(IDENTITY_PATH, name)) as file:
+        file.write()
