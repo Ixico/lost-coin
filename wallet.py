@@ -1,8 +1,9 @@
 import os, crypto
+from pathlib import Path
 
 WALLET_PATH = 'wallet'
 METADATA_PATH = os.path.join(WALLET_PATH, 'metadata.txt')
-IDENTITY_PATH = os.path.join(WALLET_PATH, 'identity')
+master_key = None
 
 
 def exists():
@@ -14,18 +15,28 @@ def create(password):
     os.makedirs(WALLET_PATH)
     with open(METADATA_PATH, 'w') as file:
         file.write(key_metadata)
-    with open(IDENTITY_PATH, 'w'):
-        pass
 
 
 def unlock(password):
-    key_metadata = None
+    global master_key
     with open(METADATA_PATH, 'r') as file:
         key_metadata = file.readline()
-    key = crypto.derive_valid_key(password, key_metadata)
-
+    master_key = crypto.derive_valid_key(password, key_metadata)
 
 
 def create_identity(name):
-    with open(os.path.join(IDENTITY_PATH, name)) as file:
-        file.write()
+    generated_keys = crypto.generate_keys(master_key)
+    identity_file_name = os.path.join(WALLET_PATH, f"{name}.pem")
+    if os.path.exists(identity_file_name):
+        raise WalletException(f"Identity with name {name} already exists.")
+    with open(identity_file_name, 'wb') as file:
+        file.write(generated_keys)
+
+
+def get_identities():
+    directory = Path(WALLET_PATH)
+    return [file.stem for file in directory.glob('*.pem')]
+
+
+class WalletException(Exception):
+    pass
