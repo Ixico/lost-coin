@@ -24,7 +24,7 @@ def derive_valid_key(password: str, key_metadata: str):
     salt, encrypted_validity_test, nonce = key_metadata.split(':')
     derived_key = calculate_pbkdf2(password, bytes.fromhex(salt))
     if decrypt(bytes.fromhex(encrypted_validity_test), derived_key, bytes.fromhex(nonce)) != VALIDITY_TEST:
-        raise Exception('Invalid password')
+        raise CryptoException('Invalid password')
     return derived_key.hex()
 
 
@@ -44,3 +44,7 @@ def generate_keys(master_key):
         protection='PBKDF2WithHMAC-SHA256AndAES256-CBC',
         prot_params={'iteration_count': 1000}
     )
+
+class CryptoException(Exception):
+    pass
+

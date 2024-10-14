@@ -15,13 +15,18 @@ def create(password):
     os.makedirs(WALLET_PATH)
     with open(METADATA_PATH, 'w') as file:
         file.write(key_metadata)
+    unlock(password)
 
 
 def unlock(password):
     global master_key
     with open(METADATA_PATH, 'r') as file:
         key_metadata = file.readline()
-    master_key = crypto.derive_valid_key(password, key_metadata)
+    try:
+        master_key = crypto.derive_valid_key(password, key_metadata)
+        return True
+    except crypto.CryptoException:
+        return False
 
 
 def create_identity(name):
