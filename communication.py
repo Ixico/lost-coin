@@ -2,8 +2,7 @@ import json
 import socket
 import threading
 
-from exceptions import LostCoinException
-from common import logger
+from common import logger, CommonException
 
 HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
 TYPE_METADATA_FIELD = 'socket_metadata_message_type'
@@ -48,7 +47,7 @@ def connect(port):
         CONNECTIONS[port] = s
     except ConnectionRefusedError:
         logger.error(f"Connection to the node {port} refused.")
-        raise LostCoinException()
+        raise CommonException()
 # todo WHAT IF SERVER DISAPPEARS - TEST AGAIN
 
 def broadcast(data_dict, data_type):
