@@ -65,4 +65,6 @@ def main():
             node.create(port, registration_port)
 
 
-node.create(port, registration_port)
+# node.create(port, registration_port)
+wallet.unlock('test123')
+wallet.create_identity('polska2')
