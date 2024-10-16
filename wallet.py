@@ -1,7 +1,6 @@
 import os, crypto
 from pathlib import Path
-from logging_config import logger
-from exceptions import LostCoinException
+from common import logger, CommonException
 
 WALLET_PATH = 'wallet'
 METADATA_PATH = os.path.join(WALLET_PATH, 'metadata.txt')
@@ -33,9 +32,8 @@ def create_identity(name):
     generated_keys = crypto.generate_keys(master_key)
     identity_file_name = os.path.join(WALLET_PATH, f"{name}.pem")
     if os.path.exists(identity_file_name):
-        message = f'Identity {name} already exists.'
-        logger.warn(message)
-        raise LostCoinException(message)
+        logger.warn(f'Identity {name} already exists.')
+        raise CommonException()
     with open(identity_file_name, 'wb') as file:
         file.write(generated_keys)
     logger.info(f'Identity {name} created successfully.')

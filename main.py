@@ -51,14 +51,18 @@ def create_wallet():
 
 
 print("LOST-COIN")
-if wallet.exists():
-    unlock_wallet()
-else:
-    create_wallet()
-while True:
-    option = menu('MENU', ['Use identity', 'Create new identity'])
-    if option == 1:
-        identities = wallet.get_identities()
-        option = menu('YOUR IDENTITIES', identities)
-        print(f"\nCreated node for identity {identities[option - 1]}")
-        node.create(port, registration_port)
+def main():
+    if wallet.exists():
+        unlock_wallet()
+    else:
+        create_wallet()
+    while True:
+        option = menu('MENU', ['Use identity', 'Create new identity'])
+        if option == 1:
+            identities = wallet.get_identities()
+            option = menu('YOUR IDENTITIES', identities)
+            print(f"\nCreated node for identity {identities[option - 1]}")
+            node.create(port, registration_port)
+
+
+node.create(port, registration_port)

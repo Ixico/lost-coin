@@ -1,3 +1,0 @@
-class LostCoinException(Exception):
-    pass
-
