@@ -1,4 +1,5 @@
 import logging
+import threading
 
 
 def setup_logger():
@@ -16,6 +17,16 @@ def setup_logger():
 
 
 logger = setup_logger()
+
+STOP_EVENT = threading.Event()
+
+
+def shutdown():
+    STOP_EVENT.set()
+    for thread in threading.enumerate():
+        if thread is not threading.current_thread():
+            thread.join()
+    exit()
 
 
 class CommonException(Exception):
