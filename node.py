@@ -4,6 +4,7 @@ from flask import Flask
 from flask import request
 from requests.exceptions import ConnectionError
 from waitress import serve
+import logging
 
 app = Flask(__name__)
 scheduler = BackgroundScheduler()
@@ -43,6 +44,7 @@ def track_nodes():
 
 
 def create(port, registration_port):
+    logging.debug("Creating node")
     if registration_port is not None:
         response = requests.post(prepare_url(registration_port, REGISTER_ENDPOINT), json={'port': port}, timeout=5)
         if response.status_code != 200:

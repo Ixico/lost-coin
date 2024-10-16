@@ -49,6 +49,7 @@ def create_wallet():
         print("Wallet created successfully.")
 
 
+
 print("LOST-COIN")
 if wallet.exists():
     unlock_wallet()

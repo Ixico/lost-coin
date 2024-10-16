@@ -3,6 +3,7 @@ from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Random import get_random_bytes
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import AES
+from exceptions import LostCoinException
 
 VALIDITY_TEST = b'lost_coin'
 
@@ -24,7 +25,7 @@ def derive_valid_key(password: str, key_metadata: str):
     salt, encrypted_validity_test, nonce = key_metadata.split(':')
     derived_key = calculate_pbkdf2(password, bytes.fromhex(salt))
     if decrypt(bytes.fromhex(encrypted_validity_test), derived_key, bytes.fromhex(nonce)) != VALIDITY_TEST:
-        raise CryptoException('Invalid password')
+        raise LostCoinException('Invalid password.')
     return derived_key.hex()
 
 
