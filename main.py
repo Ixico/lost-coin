@@ -1,46 +1,32 @@
 import getpass
 import sys
-
-import keyboard
+import click
 
 import node
 import wallet
 
-args = sys.argv
-if len(args) == 2:
-    port = int(args[1])
-    registration_port = None
-elif len(args) == 3:
-    port = int(args[1])
-    registration_port = int(args[2])
-else:
-    print('[ERROR] Usage: main.py <port> <registration_port?>')
-    exit(-1)
+@click.group()
+def application():
+    pass
 
-
-def menu(header, options):
-    print(f"\n---{header}---")
-    for index, option in enumerate(options, start=1):
-        print(f"{index}. {option}")
-    while True:
-        key = keyboard.read_event()
-        if key.event_type == keyboard.KEY_DOWN and key.name.isdigit():
-            result = int(key.name)
-            if result <= len(options):
-                return result
-
-
-def unlock_wallet():
-    password = getpass.getpass('Enter password to unlock the wallet:\n')
+@application.command()
+@click.option(
+    "--password", prompt=True, hide_input=True,
+    confirmation_prompt=True
+)
+def unlock_wallet(password):
     if not wallet.unlock(password):
         print("[ERROR] Invalid password.")
         unlock_wallet()
     else:
         print("Wallet unlocked successfully.")
 
-
-def create_wallet():
-    password = getpass.getpass('Enter strong password to create the wallet (min 12 characters):\n')
+@application.command()
+@click.option(
+    "--password", prompt=True, hide_input=True,
+    confirmation_prompt=True, help="Enter strong password to create the wallet (min 12 characters)"
+)
+def create_wallet(password):
     if len(password) < 12:
         print('[ERROR] Password too short.')
         create_wallet()
@@ -48,23 +34,18 @@ def create_wallet():
         wallet.create(password)
         print("Wallet created successfully.")
 
+@application.command()
+@click.option('--registration_port', multiple=False, help="Port of the node it will join", type=int)
+@click.option('--port', required=True, multiple=False, help="Port of this node", type=int)
 
-
-print("LOST-COIN")
-def main():
-    if wallet.exists():
-        unlock_wallet()
+def node_mode(port, registration_port):
+    if registration_port is not None:
+        node.create(port, registration_port)
     else:
-        create_wallet()
-    while True:
-        option = menu('MENU', ['Use identity', 'Create new identity'])
-        if option == 1:
-            identities = wallet.get_identities()
-            option = menu('YOUR IDENTITIES', identities)
-            print(f"\nCreated node for identity {identities[option - 1]}")
-            node.create(port, registration_port)
+        node.create(port, None)
 
 
-# node.create(port, registration_port)
-wallet.unlock('test123')
-wallet.create_identity('polska2')
+if __name__ == '__main__':
+    application()
+    print('CLI Application Started...')
+
