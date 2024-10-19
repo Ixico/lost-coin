@@ -9,11 +9,6 @@ import wallet
 def application():
     pass
 
-@application.command()
-@click.option(
-    "--password", prompt=True, hide_input=True,
-    confirmation_prompt=True
-)
 def unlock_wallet(password):
     if not wallet.unlock(password):
         print("[ERROR] Invalid password.")
@@ -21,11 +16,6 @@ def unlock_wallet(password):
     else:
         print("Wallet unlocked successfully.")
 
-@application.command()
-@click.option(
-    "--password", prompt=True, hide_input=True,
-    confirmation_prompt=True, help="Enter strong password to create the wallet (min 12 characters)"
-)
 def create_wallet(password):
     if len(password) < 12:
         print('[ERROR] Password too short.')
@@ -35,10 +25,18 @@ def create_wallet(password):
         print("Wallet created successfully.")
 
 @application.command()
-@click.option('--registration_port', multiple=False, help="Port of the node it will join", type=int)
+@click.option('--registration_port', required=False, multiple=False, help="Port of the node it will join", type=int)
 @click.option('--port', required=True, multiple=False, help="Port of this node", type=int)
+@click.option(
+    "--password", prompt=True, hide_input=True,
+    confirmation_prompt=True, help="Wallet password"
+)
+def runup(port, registration_port, password):
+    if wallet.exists():
+        unlock_wallet(password)
+    else:
+        create_wallet(password)
 
-def node_mode(port, registration_port):
     if registration_port is not None:
         node.create(port, registration_port)
     else:
@@ -49,3 +47,4 @@ if __name__ == '__main__':
     application()
     print('CLI Application Started...')
 
+wallet.create_identity('polska2')
