@@ -9,20 +9,48 @@ import wallet
 def application():
     pass
 
-def unlock_wallet(password):
-    if not wallet.unlock(password):
-        print("[ERROR] Invalid password.")
-        unlock_wallet()
-    else:
-        print("Wallet unlocked successfully.")
 
-def create_wallet(password):
+@application.command()
+@click.option(
+    "--password", prompt=True, hide_input=True,
+    confirmation_prompt=True, help="Enter strong password to create the wallet (min 12 characters)"
+)
+def createwallet(password):
     if len(password) < 12:
         print('[ERROR] Password too short.')
-        create_wallet()
     else:
         wallet.create(password)
         print("Wallet created successfully.")
+def unlock_wallet(password):
+    wallet.unlock(password)
+    if not wallet.unlock(password):
+        print("[ERROR] Invalid password.")
+    else:
+        print("Wallet unlocked successfully.")
+
+
+
+@application.command()
+@click.option(
+    "--password", prompt=True, hide_input=True,
+    confirmation_prompt=True, help="Enter the password for appropriate wallet")
+@click.option(
+    "--identity", type=click.Choice(['view', 'add'], case_sensitive=True),
+    required=True,
+    help="Select if you want to view existing entities or add a new one"
+)
+@click.option(
+    "--phrase", prompt='Select name for a new identity'
+)
+def identitymanagement(password, identity, phrase):
+    unlock_wallet(password)
+    if identity == 'view':
+        identities = wallet.get_identities()
+        print(identities)
+    if identity == 'add':
+        wallet.create_identity(phrase)
+
+
 
 @application.command()
 @click.option('--registration_port', required=False, multiple=False, help="Port of the node it will join", type=int)
@@ -32,11 +60,7 @@ def create_wallet(password):
     confirmation_prompt=True, help="Wallet password"
 )
 def runup(port, registration_port, password):
-    if wallet.exists():
-        unlock_wallet(password)
-    else:
-        create_wallet(password)
-
+    unlock_wallet(password)
     if registration_port is not None:
         node.create(port, registration_port)
     else:
@@ -46,5 +70,3 @@ def runup(port, registration_port, password):
 if __name__ == '__main__':
     application()
     print('CLI Application Started...')
-
-wallet.create_identity('polska2')
