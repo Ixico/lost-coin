@@ -22,7 +22,6 @@ def createwallet(password):
         wallet.create(password)
         print("Wallet created successfully.")
 def unlock_wallet(password):
-    wallet.unlock(password)
     if not wallet.unlock(password):
         print("[ERROR] Invalid password.")
     else:
@@ -39,15 +38,13 @@ def unlock_wallet(password):
     required=True,
     help="Select if you want to view existing entities or add a new one"
 )
-@click.option(
-    "--phrase", prompt='Select name for a new identity'
-)
-def identitymanagement(password, identity, phrase):
+def identitymanagement(password, identity):
     unlock_wallet(password)
     if identity == 'view':
         identities = wallet.get_identities()
         print(identities)
-    if identity == 'add':
+    elif identity == 'add':
+        phrase = click.prompt("Please enter the phrase", hide_input=False, confirmation_prompt=True)
         wallet.create_identity(phrase)
 
 
