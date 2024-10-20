@@ -4,30 +4,33 @@ import click
 
 import node
 import wallet
+from common import CommonException
+
 
 @click.group()
 def application():
     pass
 
-
 @application.command()
-@click.option(
-    "--password", prompt=True, hide_input=True,
-    confirmation_prompt=True, help="Enter strong password to create the wallet (min 12 characters)"
-)
-def createwallet(password):
-    if len(password) < 12:
-        print('[ERROR] Password too short.')
+def createwallet():
+    if not wallet.exists():
+        password = click.prompt("Enter strong password to create the wallet (min 12 characters)",hide_input=True, confirmation_prompt=True)
+        if len(password) < 12:
+            print('[ERROR] Password too short.')
+        else:
+            wallet.create(password)
+            print("Wallet created successfully.")
     else:
-        wallet.create(password)
-        print("Wallet created successfully.")
+        print('Wallet already exists')
+
 def unlock_wallet(password):
-    if not wallet.unlock(password):
-        print("[ERROR] Invalid password.")
-    else:
-        print("Wallet unlocked successfully.")
-
-
+    while True:
+        try:
+            wallet.unlock(password)
+            print("Wallet unlocked successfully.")
+            break
+        except CommonException:
+            print('invalid password')
 
 @application.command()
 @click.option(

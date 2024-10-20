@@ -26,7 +26,7 @@ def handle_client(conn, node, handler):
             handler(data)
     print("HANDLE CLIENT FINISHED")
 
-
+#todo debug threads
 def listen(port, handler):
     with socket.socket() as s:
         s.bind((HOST, port))
@@ -41,7 +41,10 @@ def listen(port, handler):
             node = addr[1]
             CONNECTIONS[node] = conn
             logger.info(f'Node {node} connected.')
-            threading.Thread(target=handle_client, args=(conn, node, handler)).start()
+
+            state = threading.Thread(target=handle_client, args=(conn, node, handler))
+            state.start()
+            state.join()
 
 
 def connect(port):
