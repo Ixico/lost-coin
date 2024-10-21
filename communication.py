@@ -4,18 +4,21 @@ import threading
 
 from common import logger, CommonException, STOP_EVENT, shutdown
 
-HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
+HOST = "127.0.0.1"
 TYPE_METADATA_FIELD = 'socket_metadata_message_type'
 CONNECTIONS = {}
 
 
 def handle_client(conn, node, handler):
     with conn:
+        conn.settimeout(2)
         while not STOP_EVENT.is_set():
             try:
                 data = conn.recv(1024)
             except ConnectionResetError:  # unexpected disconnection
                 data = None
+            except socket.timeout:
+                continue
             if not data:
                 logger.warn(f'Node {node} disconnected.')
                 del CONNECTIONS[node]

@@ -1,5 +1,3 @@
-import getpass
-import sys
 import click
 
 import node
@@ -34,8 +32,7 @@ def unlock_wallet(password):
 
 @application.command()
 @click.option(
-    "--password", prompt=True, hide_input=True,
-    confirmation_prompt=True, help="Enter the password for appropriate wallet")
+    "--password", prompt=True, hide_input=True, help="Enter the password for appropriate wallet")
 @click.option(
     "--identity", type=click.Choice(['view', 'add'], case_sensitive=True),
     required=True,
@@ -43,11 +40,14 @@ def unlock_wallet(password):
 )
 def identitymanagement(password, identity):
     unlock_wallet(password)
+    identities = wallet.get_identities()
     if identity == 'view':
-        identities = wallet.get_identities()
         print(identities)
     elif identity == 'add':
         phrase = click.prompt("Please enter the phrase", hide_input=False, confirmation_prompt=True)
+        if phrase in identities:
+            print(f'Identity {phrase} already exists.')
+            exit()
         wallet.create_identity(phrase)
 
 
