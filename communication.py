@@ -1,10 +1,10 @@
-import datetime
 import json
 import socket
 import threading
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
+import common
 from common import logger, STOP_EVENT, shutdown
 
 HOST = "127.0.0.1"
@@ -37,7 +37,7 @@ def handle_client(conn, node, handler):
 
 
 def listen(port, handler):
-    register_actuator()
+    common.register_scheduler(check_connections, interval=30, initial_delay=30)
     with socket.socket() as s:
         s.bind((HOST, port))
         s.listen()
@@ -62,7 +62,7 @@ def connect(port):
         CONNECTIONS[port] = s
     except ConnectionRefusedError:
         logger.critical(f"Connection to the node {port} refused.")
-        shutdown(cleanup=lambda: scheduler.shutdown())
+        shutdown()
 
 
 def broadcast(data_dict, data_type):
@@ -74,7 +74,9 @@ def broadcast(data_dict, data_type):
 def check_connections():
     logger.debug(f'Checking active connections via heartbeat.')
     send_and_delete_inactive({TYPE_METADATA_FIELD: HEARTBEAT})
-    check_net_connection()
+    if len(CONNECTIONS) == 0:
+        logger.critical("No active connections, node is out of network!")
+        shutdown()
 
 
 def send_and_delete_inactive(message):
@@ -88,14 +90,3 @@ def send_and_delete_inactive(message):
     for inactive_node in inactive_nodes:
         del CONNECTIONS[inactive_node]
 
-
-def check_net_connection():
-    if len(CONNECTIONS) == 0:
-        logger.critical("No active connections, node is out of network!")
-        shutdown(cleanup=lambda: scheduler.shutdown())
-
-
-def register_actuator():
-    job = scheduler.add_job(check_connections, 'interval', seconds=30)
-    job.modify(next_run_time=datetime.datetime.now() + datetime.timedelta(seconds=30))  # 30s initial delay
-    scheduler.start()
