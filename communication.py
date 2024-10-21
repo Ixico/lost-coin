@@ -29,11 +29,11 @@ def handle_client(conn, node, handler):
                 del CONNECTIONS[node]
                 break
             data = json.loads(data.decode('utf-8'))
+            # todo: drop messages that does not contain type metadata field
             if data[TYPE_METADATA_FIELD] == HEARTBEAT:
                 continue
             logger.debug(f'Received data from node {node}: {data}')
             handler(data)
-    print("HANDLE CLIENT FINISHED")
 
 
 def listen(port, handler):
@@ -96,6 +96,6 @@ def check_net_connection():
 
 
 def register_actuator():
-    job = scheduler.add_job(check_connections, 'interval', seconds=10)
-    job.modify(next_run_time=datetime.datetime.now() + datetime.timedelta(seconds=10))  # 10s initial delay
+    job = scheduler.add_job(check_connections, 'interval', seconds=30)
+    job.modify(next_run_time=datetime.datetime.now() + datetime.timedelta(seconds=30))  # 30s initial delay
     scheduler.start()
