@@ -2,7 +2,8 @@ import click
 
 import node
 import wallet
-from common import CommonException
+import signal
+from common import CommonException, handle_sigint
 
 
 @click.group()
@@ -66,5 +67,6 @@ def runup(port, registration_port, password):
 
 
 if __name__ == '__main__':
-    application()
     print('CLI Application Started...')
+    signal.signal(signal.SIGINT, handle_sigint)
+    application()

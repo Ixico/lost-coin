@@ -30,8 +30,7 @@ SCHEDULERS = []
 # todo: handle sigint (it doesn't work now)
 
 def handle_sigint(signum, frame):
-    print('hi')
-    shutdown(lambda: None)
+    shutdown()
 
 
 def proceed_shutdown():

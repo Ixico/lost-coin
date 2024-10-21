@@ -1,9 +1,6 @@
-from apscheduler.schedulers.background import BackgroundScheduler
-
 import communication
 import threading
-
-scheduler = BackgroundScheduler()
+from common import STOP_EVENT
 
 
 def handler(message):
@@ -15,4 +12,6 @@ def create(port, registration_port):
     thread.start()
     if registration_port is not None:
         communication.connect(registration_port)
-    thread.join()
+    while not STOP_EVENT.is_set():
+        pass
+
