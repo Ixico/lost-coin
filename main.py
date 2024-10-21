@@ -14,7 +14,7 @@ def createwallet():
     if not wallet.exists():
         password = click.prompt("Enter strong password to create the wallet (min 12 characters)",hide_input=True, confirmation_prompt=True)
         if len(password) < 12:
-            print('[ERROR] Password too short.')
+            print('Password too short.')
         else:
             wallet.create(password)
             print("Wallet created successfully.")
@@ -56,8 +56,7 @@ def identitymanagement(password, identity):
 @click.option('--registration_port', required=False, multiple=False, help="Port of the node it will join", type=int)
 @click.option('--port', required=True, multiple=False, help="Port of this node", type=int)
 @click.option(
-    "--password", prompt=True, hide_input=True,
-    confirmation_prompt=True, help="Wallet password"
+    "--password", prompt=True, hide_input=True,  help="Wallet password"
 )
 def runup(port, registration_port, password):
     unlock_wallet(password)
