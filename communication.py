@@ -29,7 +29,9 @@ def handle_client(conn, node, handler):
                 del CONNECTIONS[node]
                 break
             data = json.loads(data.decode('utf-8'))
-            # todo: drop messages that does not contain type metadata field
+            if TYPE_METADATA_FIELD not in data:
+                logger.warn(f'Dropping data as it does not contain message type: {data}')
+                continue
             if data[TYPE_METADATA_FIELD] == HEARTBEAT:
                 continue
             logger.debug(f'Received data from node {node}: {data}')
