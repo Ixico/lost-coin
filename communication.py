@@ -44,10 +44,7 @@ def listen(port, handler):
             node = addr[1]
             CONNECTIONS[node] = conn
             logger.info(f'Node {node} connected.')
-
-            state = threading.Thread(target=handle_client, args=(conn, node, handler))
-            state.start()
-            state.join()
+            threading.Thread(target=handle_client, args=(conn, node, handler)).start()
 
 
 def connect(port):
