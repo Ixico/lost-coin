@@ -1,12 +1,17 @@
+import datetime
 import json
 import socket
 import threading
 
-from common import logger, CommonException, STOP_EVENT, shutdown
+from apscheduler.schedulers.background import BackgroundScheduler
+
+from common import logger, STOP_EVENT, shutdown
 
 HOST = "127.0.0.1"
 TYPE_METADATA_FIELD = 'socket_metadata_message_type'
+HEARTBEAT = 'socket_heartbeat'
 CONNECTIONS = {}
+scheduler = BackgroundScheduler()
 
 
 def handle_client(conn, node, handler):
@@ -22,15 +27,17 @@ def handle_client(conn, node, handler):
             if not data:
                 logger.warn(f'Node {node} disconnected.')
                 del CONNECTIONS[node]
-                check_net_connection()
                 break
             data = json.loads(data.decode('utf-8'))
+            if data[TYPE_METADATA_FIELD] == HEARTBEAT:
+                continue
             logger.debug(f'Received data from node {node}: {data}')
             handler(data)
     print("HANDLE CLIENT FINISHED")
 
-#todo debug threads
+
 def listen(port, handler):
+    register_actuator()
     with socket.socket() as s:
         s.bind((HOST, port))
         s.listen()
@@ -55,25 +62,40 @@ def connect(port):
         CONNECTIONS[port] = s
     except ConnectionRefusedError:
         logger.critical(f"Connection to the node {port} refused.")
-        raise CommonException()
+        shutdown(cleanup=lambda: scheduler.shutdown())
 
 
 def broadcast(data_dict, data_type):
     data_dict[TYPE_METADATA_FIELD] = data_type
     logger.debug(f'Broadcasting to connections {list(CONNECTIONS.keys())} data: {data_dict}')
+    send_and_delete_inactive(data_dict)
+
+
+def check_connections():
+    logger.debug(f'Checking active connections via heartbeat.')
+    send_and_delete_inactive({TYPE_METADATA_FIELD: HEARTBEAT})
+    check_net_connection()
+
+
+def send_and_delete_inactive(message):
     inactive_nodes = []
     for node, conn in CONNECTIONS.items():
         try:
-            conn.sendall(json.dumps(data_dict).encode('utf-8'))
+            conn.sendall(json.dumps(message).encode('utf-8'))
         except ConnectionResetError:
             logger.warn(f'Node {node} became inactive and will be deleted from connections.')
             inactive_nodes.append(node)
     for inactive_node in inactive_nodes:
         del CONNECTIONS[inactive_node]
-    check_net_connection()
 
 
 def check_net_connection():
     if len(CONNECTIONS) == 0:
         logger.critical("No active connections, node is out of network!")
-        shutdown()
+        shutdown(cleanup=lambda: scheduler.shutdown())
+
+
+def register_actuator():
+    job = scheduler.add_job(check_connections, 'interval', seconds=10)
+    job.modify(next_run_time=datetime.datetime.now() + datetime.timedelta(seconds=10))  # 10s initial delay
+    scheduler.start()

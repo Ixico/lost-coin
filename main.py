@@ -22,13 +22,12 @@ def createwallet():
         print('Wallet already exists')
 
 def unlock_wallet(password):
-    while True:
-        try:
-            wallet.unlock(password)
-            print("Wallet unlocked successfully.")
-            break
-        except CommonException:
-            print('invalid password')
+    try:
+        wallet.unlock(password)
+        print("Wallet unlocked successfully.")
+    except CommonException:
+        print('invalid password')
+        exit()
 
 @application.command()
 @click.option(

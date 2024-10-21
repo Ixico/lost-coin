@@ -21,12 +21,24 @@ logger = setup_logger()
 STOP_EVENT = threading.Event()
 
 
-def shutdown():
+# todo: handle sigint (it doesn't work now)
+
+def handle_sigint(signum, frame):
+    print('hi')
+    shutdown()
+
+
+def proceed_shutdown(cleanup):
+    cleanup()
     STOP_EVENT.set()
     for thread in threading.enumerate():
         if thread is not threading.current_thread():
             thread.join()
     exit()
+
+
+def shutdown(cleanup):
+    threading.Thread(target=proceed_shutdown, args=(cleanup,)).start()
 
 
 class CommonException(Exception):
