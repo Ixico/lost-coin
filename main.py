@@ -1,70 +1,70 @@
-import getpass
-import sys
-
-import keyboard
+import click
 
 import node
 import wallet
-
-args = sys.argv
-if len(args) == 2:
-    port = int(args[1])
-    registration_port = None
-elif len(args) == 3:
-    port = int(args[1])
-    registration_port = int(args[2])
-else:
-    print('[ERROR] Usage: main.py <port> <registration_port?>')
-    exit(-1)
+from common import CommonException
 
 
-def menu(header, options):
-    print(f"\n---{header}---")
-    for index, option in enumerate(options, start=1):
-        print(f"{index}. {option}")
-    while True:
-        key = keyboard.read_event()
-        if key.event_type == keyboard.KEY_DOWN and key.name.isdigit():
-            result = int(key.name)
-            if result <= len(options):
-                return result
+@click.group()
+def application():
+    pass
 
-
-def unlock_wallet():
-    password = getpass.getpass('Enter password to unlock the wallet:\n')
-    if not wallet.unlock(password):
-        print("[ERROR] Invalid password.")
-        unlock_wallet()
+@application.command()
+def createwallet():
+    if not wallet.exists():
+        password = click.prompt("Enter strong password to create the wallet (min 12 characters)",hide_input=True, confirmation_prompt=True)
+        if len(password) < 12:
+            print('Password too short.')
+        else:
+            wallet.create(password)
+            print("Wallet created successfully.")
     else:
+        print('Wallet already exists')
+
+def unlock_wallet(password):
+    try:
+        wallet.unlock(password)
         print("Wallet unlocked successfully.")
+    except CommonException:
+        print('invalid password')
+        exit()
+
+@application.command()
+@click.option(
+    "--password", prompt=True, hide_input=True, help="Enter the password for appropriate wallet")
+@click.option(
+    "--identity", type=click.Choice(['view', 'add'], case_sensitive=True),
+    required=True,
+    help="Select if you want to view existing entities or add a new one"
+)
+def identitymanagement(password, identity):
+    unlock_wallet(password)
+    identities = wallet.get_identities()
+    if identity == 'view':
+        print(identities)
+    elif identity == 'add':
+        phrase = click.prompt("Please enter the phrase", hide_input=False, confirmation_prompt=True)
+        if phrase in identities:
+            print(f'Identity {phrase} already exists.')
+            exit()
+        wallet.create_identity(phrase)
 
 
-def create_wallet():
-    password = getpass.getpass('Enter strong password to create the wallet (min 12 characters):\n')
-    if len(password) < 12:
-        print('[ERROR] Password too short.')
-        create_wallet()
+
+@application.command()
+@click.option('--registration_port', required=False, multiple=False, help="Port of the node it will join", type=int)
+@click.option('--port', required=True, multiple=False, help="Port of this node", type=int)
+@click.option(
+    "--password", prompt=True, hide_input=True,  help="Wallet password"
+)
+def runup(port, registration_port, password):
+    unlock_wallet(password)
+    if registration_port is not None:
+        node.create(port, registration_port)
     else:
-        wallet.create(password)
-        print("Wallet created successfully.")
+        node.create(port, None)
 
 
-
-print("LOST-COIN")
-def main():
-    if wallet.exists():
-        unlock_wallet()
-    else:
-        create_wallet()
-    while True:
-        option = menu('MENU', ['Use identity', 'Create new identity'])
-        if option == 1:
-            identities = wallet.get_identities()
-            option = menu('YOUR IDENTITIES', identities)
-            print(f"\nCreated node for identity {identities[option - 1]}")
-            node.create(port, registration_port)
-
-
-# node.create(port, registration_port)
-wallet.unlock('test123')
-wallet.create_identity('polska2')
+if __name__ == '__main__':
+    application()
+    print('CLI Application Started...')
