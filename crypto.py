@@ -46,3 +46,8 @@ def generate_keys(master_key):
         protection='PBKDF2WithHMAC-SHA256AndAES256-CBC',
         prot_params={'iteration_count': 1000}
     )
+
+
+def hash(data: str):
+    return SHA256.new(data.encode('utf-8')).hexdigest()
+

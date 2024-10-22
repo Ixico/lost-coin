@@ -6,12 +6,15 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 import common
 from common import logger, STOP_EVENT, shutdown
+from crypto import hash
 
 HOST = "127.0.0.1"
 TYPE_METADATA_FIELD = 'socket_metadata_message_type'
 HEARTBEAT = 'socket_heartbeat'
 CONNECTIONS = {}
 scheduler = BackgroundScheduler()
+RECEIVED_MESSAGES = []
+# todo: thread safe variables
 
 
 def handle_client(conn, node, handler):
@@ -20,7 +23,7 @@ def handle_client(conn, node, handler):
         while not STOP_EVENT.is_set():
             try:
                 data = conn.recv(1024)
-            except ConnectionResetError:  # unexpected disconnection
+            except (ConnectionResetError, ConnectionAbortedError):  # unexpected disconnection
                 data = None
             except socket.timeout:
                 continue
@@ -28,13 +31,20 @@ def handle_client(conn, node, handler):
                 logger.warn(f'Node {node} disconnected.')
                 del CONNECTIONS[node]
                 break
-            data = json.loads(data.decode('utf-8'))
+            data = data.decode('utf-8')
+            message_digest = hash(data)
+            data = json.loads(data)
             if TYPE_METADATA_FIELD not in data:
                 logger.warn(f'Dropping data as it does not contain message type: {data}')
                 continue
             if data[TYPE_METADATA_FIELD] == HEARTBEAT:
                 continue
+            if message_digest in RECEIVED_MESSAGES:
+                logger.debug(f'Skipping message {data} since it already has been received.')
+                continue
+            RECEIVED_MESSAGES.append(message_digest)
             logger.debug(f'Received data from node {node}: {data}')
+            broadcast(data)
             handler(data)
 
 
@@ -55,7 +65,7 @@ def listen(port, handler):
             logger.info(f'Node {node} connected.')
             threading.Thread(target=handle_client, args=(conn, node, handler)).start()
 
-
+# todo: also listen socket!
 def connect(port):
     s = socket.socket()
     logger.info(f'Connecting to node {port}.')
@@ -67,8 +77,10 @@ def connect(port):
         shutdown()
 
 
-def broadcast(data_dict, data_type):
-    data_dict[TYPE_METADATA_FIELD] = data_type
+# todo: refactor this
+def broadcast(data_dict, data_type=None):
+    if data_type is not None:
+        data_dict[TYPE_METADATA_FIELD] = data_type
     logger.debug(f'Broadcasting to connections {list(CONNECTIONS.keys())} data: {data_dict}')
     send_and_delete_inactive(data_dict)
 
