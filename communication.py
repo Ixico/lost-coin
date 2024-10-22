@@ -65,13 +65,14 @@ def listen(port, handler):
             logger.info(f'Node {node} connected.')
             threading.Thread(target=handle_client, args=(conn, node, handler)).start()
 
-# todo: also listen socket!
+# todo: add handler function
 def connect(port):
     s = socket.socket()
     logger.info(f'Connecting to node {port}.')
     try:
         s.connect((HOST, port))
         CONNECTIONS[port] = s
+        threading.Thread(target=handle_client, args=(s, port, lambda x: None)).start()
     except ConnectionRefusedError:
         logger.critical(f"Connection to the node {port} refused.")
         shutdown()
@@ -92,6 +93,8 @@ def check_connections():
         logger.critical("No active connections, node is out of network!")
         shutdown()
 
+
+# todo: maybe add already sent messages to RECEIVED_MESSAGES
 
 def send_and_delete_inactive(message):
     inactive_nodes = []
