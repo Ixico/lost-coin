@@ -2,9 +2,6 @@ import json
 import socket
 import threading
 
-from apscheduler.schedulers.background import BackgroundScheduler
-
-import common
 from common import logger, STOP_EVENT, shutdown
 from crypto import hash
 
@@ -12,12 +9,15 @@ HOST = "127.0.0.1"
 TYPE_METADATA_FIELD = 'socket_metadata_message_type'
 HEARTBEAT = 'socket_heartbeat'
 CONNECTIONS = {}
-scheduler = BackgroundScheduler()
 RECEIVED_MESSAGES = []
+HANDLER_FUNCTION = lambda x: None
+# todo: get rid of globals one day
+
+
 # todo: thread safe variables
 
 
-def handle_client(conn, node, handler):
+def handle_client(conn, node):
     with conn:
         conn.settimeout(2)
         while not STOP_EVENT.is_set():
@@ -29,7 +29,7 @@ def handle_client(conn, node, handler):
                 continue
             if not data:
                 logger.warn(f'Node {node} disconnected.')
-                del CONNECTIONS[node]
+                delete_node(node)
                 break
             data = data.decode('utf-8')
             message_digest = hash(data)
@@ -45,11 +45,10 @@ def handle_client(conn, node, handler):
             RECEIVED_MESSAGES.append(message_digest)
             logger.debug(f'Received data from node {node}: {data}')
             broadcast(data)
-            handler(data)
+            HANDLER_FUNCTION(data)
 
 
-def listen(port, handler):
-    common.register_scheduler(check_connections, interval=30, initial_delay=30)
+def listen(port):
     with socket.socket() as s:
         s.bind((HOST, port))
         s.listen()
@@ -63,16 +62,16 @@ def listen(port, handler):
             node = addr[1]
             CONNECTIONS[node] = conn
             logger.info(f'Node {node} connected.')
-            threading.Thread(target=handle_client, args=(conn, node, handler)).start()
+            threading.Thread(target=handle_client, args=(conn, node)).start()
 
-# todo: add handler function
+
 def connect(port):
     s = socket.socket()
     logger.info(f'Connecting to node {port}.')
     try:
         s.connect((HOST, port))
         CONNECTIONS[port] = s
-        threading.Thread(target=handle_client, args=(s, port, lambda x: None)).start()
+        threading.Thread(target=handle_client, args=(s, port)).start()
     except ConnectionRefusedError:
         logger.critical(f"Connection to the node {port} refused.")
         shutdown()
@@ -86,24 +85,27 @@ def broadcast(data_dict, data_type=None):
     send_and_delete_inactive(data_dict)
 
 
-def check_connections():
-    logger.debug(f'Checking active connections via heartbeat.')
-    send_and_delete_inactive({TYPE_METADATA_FIELD: HEARTBEAT})
-    if len(CONNECTIONS) == 0:
-        logger.critical("No active connections, node is out of network!")
-        shutdown()
-
-
-# todo: maybe add already sent messages to RECEIVED_MESSAGES
-
-def send_and_delete_inactive(message):
+def send_and_delete_inactive(message: dict):
     inactive_nodes = []
     for node, conn in CONNECTIONS.items():
         try:
-            conn.sendall(json.dumps(message).encode('utf-8'))
+            message = json.dumps(message)
+            RECEIVED_MESSAGES.append(hash(message))
+            conn.sendall(message.encode('utf-8'))
         except ConnectionResetError:
             logger.warn(f'Node {node} became inactive and will be deleted from connections.')
             inactive_nodes.append(node)
     for inactive_node in inactive_nodes:
-        del CONNECTIONS[inactive_node]
+        delete_node(inactive_node)
 
+
+def set_handler_function(handler):
+    global HANDLER_FUNCTION
+    HANDLER_FUNCTION = handler
+
+
+def delete_node(node):
+    del CONNECTIONS[node]
+    if len(CONNECTIONS) == 0:
+        logger.critical("No active connections, node is out of network!")
+        shutdown()

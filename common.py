@@ -1,9 +1,5 @@
-import datetime
 import logging
 import threading
-
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.schedulers.base import STATE_STOPPED as SCHEDULER_STATE_STOPPED
 
 
 def setup_logger():
@@ -24,19 +20,13 @@ logger = setup_logger()
 
 STOP_EVENT = threading.Event()
 
-SCHEDULERS = []
 
-
-# todo: handle sigint (it doesn't work now)
-
+# noinspection PyUnusedLocal
 def handle_sigint(signum, frame):
     shutdown()
 
 
 def proceed_shutdown():
-    for scheduler in SCHEDULERS:
-        if scheduler.state != SCHEDULER_STATE_STOPPED:
-            scheduler.shutdown()
     STOP_EVENT.set()
     for thread in threading.enumerate():
         if thread is not threading.current_thread():
@@ -46,14 +36,6 @@ def proceed_shutdown():
 
 def shutdown():
     threading.Thread(target=proceed_shutdown).start()
-
-
-def register_scheduler(job_function, interval, initial_delay):
-    scheduler = BackgroundScheduler()
-    job = scheduler.add_job(job_function, 'interval', seconds=interval)
-    job.modify(next_run_time=datetime.datetime.now() + datetime.timedelta(seconds=initial_delay))
-    SCHEDULERS.append(scheduler)
-    scheduler.start()
 
 
 class CommonException(Exception):
