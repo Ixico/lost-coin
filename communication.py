@@ -11,10 +11,9 @@ HEARTBEAT = 'socket_heartbeat'
 CONNECTIONS = {}
 RECEIVED_MESSAGES = []
 HANDLER_FUNCTION = lambda x: None
+
+
 # todo: get rid of globals one day
-
-
-# todo: thread safe variables
 
 
 def handle_client(conn, node):

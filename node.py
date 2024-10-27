@@ -8,7 +8,8 @@ def handler(message):
 
 
 def create(port, registration_port):
-    thread = threading.Thread(target=communication.listen, args=(port, handler))
+    communication.set_handler_function(handler)
+    thread = threading.Thread(target=communication.listen, args=(port,))
     thread.start()
     if registration_port is not None:
         communication.connect(registration_port)
