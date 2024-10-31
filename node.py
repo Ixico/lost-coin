@@ -42,5 +42,3 @@ def create(port, registration_port, is_miner=False):
     threading.Thread(target=communication.listen, args=(port,)).start()
     if registration_port is not None:
         communication.connect(registration_port)
-    while not STOP_EVENT.is_set():
-        pass

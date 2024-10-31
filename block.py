@@ -12,12 +12,8 @@ BLOCKS = [{
 MINE_PADDING = 12
 
 
-@dataclass
-class Block:
-    previous_hash: str
-    content: str
-    nonce: str = None
-    hash: str = None
+def get_blocks():
+    return [b['content'] for b in BLOCKS]
 
 
 def create(content):
