@@ -7,10 +7,9 @@ from crypto import hash
 
 HOST = "127.0.0.1"
 TYPE_METADATA_FIELD = 'socket_metadata_message_type'
-HEARTBEAT = 'socket_heartbeat'
 CONNECTIONS = {}
 RECEIVED_MESSAGES = []
-HANDLER_FUNCTION = lambda x: None
+HANDLER_FUNCTION = lambda x, y: None
 
 
 # todo: get rid of globals one day
@@ -36,15 +35,15 @@ def handle_client(conn, node):
             if TYPE_METADATA_FIELD not in data:
                 logger.warn(f'Dropping data as it does not contain message type: {data}')
                 continue
-            if data[TYPE_METADATA_FIELD] == HEARTBEAT:
-                continue
             if message_digest in RECEIVED_MESSAGES:
                 logger.debug(f'Skipping message {data} since it already has been received.')
                 continue
             RECEIVED_MESSAGES.append(message_digest)
             logger.debug(f'Received data from node {node}: {data}')
             broadcast(data)
-            HANDLER_FUNCTION(data)
+            message_type = data[TYPE_METADATA_FIELD]
+            del data[TYPE_METADATA_FIELD]
+            HANDLER_FUNCTION(data, message_type)
 
 
 def listen(port):
