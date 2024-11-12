@@ -1,6 +1,6 @@
 import PySimpleGUI as sg
 import block, node
-from common import STOP_EVENT
+from common import STOP_EVENT, shutdown
 
 blocks = block.get_blocks()
 mining_queue = []  # Queue of blocks waiting to be mined
@@ -103,7 +103,7 @@ def blockchain_view(is_miner):
             # Ask for content with a popup
             block_content = sg.popup_get_text("Enter content for the new block:", "New Block Content")
             if block_content:  # Proceed only if the user entered some content
-                node.create_block(block_content)
+                node.create_transaction(block_content)
             else:
                 print("New block creation cancelled or empty content provided.")
 

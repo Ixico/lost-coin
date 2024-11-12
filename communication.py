@@ -30,8 +30,10 @@ def handle_client(conn, node):
                 delete_node(node)
                 break
             data = data.decode('utf-8')
+            logger.debug(f'DECODED: {data}, {type(data)}')
             message_digest = hash(data)
             data = json.loads(data)
+            logger.debug(f'LOADED: {data}, {type(data)}')
             if TYPE_METADATA_FIELD not in data:
                 logger.warn(f'Dropping data as it does not contain message type: {data}')
                 continue
@@ -40,7 +42,7 @@ def handle_client(conn, node):
                 continue
             RECEIVED_MESSAGES.append(message_digest)
             logger.debug(f'Received data from node {node}: {data}')
-            broadcast(data)
+            broadcast(data, omit_node=node)
             message_type = data[TYPE_METADATA_FIELD]
             del data[TYPE_METADATA_FIELD]
             HANDLER_FUNCTION(data, message_type)
@@ -75,18 +77,21 @@ def connect(port):
         shutdown()
 
 
-# todo: refactor this
-def broadcast(data_dict, data_type=None):
+# todo: refactor this (data_type might be required now)
+def broadcast(data_dict: dict, data_type=None, omit_node=None):
     if data_type is not None:
         data_dict[TYPE_METADATA_FIELD] = data_type
+    # todo: log omit_node
     logger.debug(f'Broadcasting to connections {list(CONNECTIONS.keys())} data: {data_dict}')
-    send_and_delete_inactive(data_dict)
+    send_and_delete_inactive(data_dict, omit_node)
 
 
-def send_and_delete_inactive(message: dict):
+def send_and_delete_inactive(message: dict, omit_node=None):
     inactive_nodes = []
     for node, conn in CONNECTIONS.items():
         try:
+            if node == omit_node:
+                continue
             message = json.dumps(message)
             RECEIVED_MESSAGES.append(hash(message))
             conn.sendall(message.encode('utf-8'))

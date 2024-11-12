@@ -1,35 +1,32 @@
-import block
-import communication
 import threading
 
+import block
+import communication
 import miner
-from common import STOP_EVENT
+import transaction
 
 
 def handle_mined_block(mined_block):
-    # todo: won't work correctly with more than one miner
-    block.add(mined_block)
-    communication.broadcast(mined_block, 'mined_block')
+    block.add_if_valid(mined_block)
+    communication.broadcast(mined_block, 'block')
 
 
 def handler_miner(data, message_type):
-    if message_type == 'block' and block.is_valid(data):
+    if message_type == 'transaction':
         miner.add(data)
-    if message_type == 'mined_block':
-        if block.is_valid(data) and block.is_mined(data):
-            block.add(data)
+    if message_type == 'block':
+        block.add_if_valid(data)
 
 
 def handler(data, message_type):
-    if message_type == 'block':
+    if message_type == 'transaction':
         return
-    if message_type == 'mined_block':
-        if block.is_valid(data) and block.is_mined(data):
-            block.add(data)
+    if message_type == 'block':
+        block.add_if_valid(data)
 
 
-def create_block(content):
-    communication.broadcast(block.create(content), 'block')
+def create_transaction(content):
+    communication.broadcast(transaction.create(content), 'transaction')
 
 
 def create(port, registration_port, is_miner=False):

@@ -16,21 +16,15 @@ def get_blocks():
     return [b['content'] for b in BLOCKS]
 
 
-def create(content):
-    return {
-        'previous_hash': hash_block(BLOCKS[-1]),
-        'content': content
-    }
-
-
-def add(block):
-    logger.debug(f'Adding block to chain: {block}')
-    BLOCKS.append(block)
+def add_if_valid(block):
+    if is_valid(block):
+        logger.debug(f'Adding block to chain: {block}')
+        BLOCKS.append(block)
 
 
 # todo: allow forks
 def is_valid(block):
-    return block['previous_hash'] == hash_block(BLOCKS[-1])
+    return block['previous_hash'] == hash_block(BLOCKS[-1]) and is_mined(block)
 
 
 def is_mined(block):
