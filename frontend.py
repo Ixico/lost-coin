@@ -2,10 +2,9 @@ import PySimpleGUI as sg
 import block, node
 from common import STOP_EVENT, shutdown
 
-blocks = block.get_blocks()
+blocks = block.get_blocks_content()
 mining_queue = []  # Queue of blocks waiting to be mined
 currently_mined_block = ""  # Placeholder for the block currently being mined
-import threading
 
 
 def create_connect_view():
@@ -95,7 +94,8 @@ def blockchain_view(is_miner):
     window = sg.Window("Blockchain", layout)
 
     while not STOP_EVENT.is_set():
-        event, values = window.read()
+        event, values = window.read(timeout=100)
+        window['block_list'].update(values=block.get_blocks_content())
 
         if event == sg.WINDOW_CLOSED:  # Exit if the user closes the window
             break
@@ -117,7 +117,6 @@ def blockchain_view(is_miner):
                 print("No blocks in the queue to mine.")
 
         # Refresh blockchain display
-        window['block_list'].update(values=block.get_blocks())
 
     window.close()
 
@@ -126,6 +125,5 @@ def to_int(x):
 
 # Start with the connect view
 port, registration_port, is_miner = connect_view()
-# threading.Thread(target=node.create, args=(to_int(port), to_int(registration_port), is_miner)).start()
 node.create(to_int(port), to_int(registration_port), is_miner)
 blockchain_view(is_miner)

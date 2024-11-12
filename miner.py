@@ -1,33 +1,32 @@
 import queue
+
+import communication
 from common import STOP_EVENT, logger
 import block
 from Crypto.Random import get_random_bytes
 
-BLOCKS = queue.Queue()
-HANDLER = lambda x: None
+TRANSACTIONS = queue.Queue()
 
 
-def set_handler_function(handler):
-    global HANDLER
-    HANDLER = handler
+def add(transaction):
+    logger.debug(f'Adding transaction to mine: {transaction}')
+    TRANSACTIONS.put(transaction)
 
 
-def add(b):
-    logger.debug(f'Adding block to mine: {b}')
-    BLOCKS.put(b)
-
-
+# todo: enclosing multiple transactions into one block
 def start_mining():
     while not STOP_EVENT.is_set():
         try:
-            b = BLOCKS.get(timeout=2)
-            logger.debug(f'Mining block {b}')
+            transaction = TRANSACTIONS.get(timeout=2)
+            transaction['previous_hash'] = block.get_last_block_hash()
+            logger.debug(f'Mining block {transaction}')
         except queue.Empty:
             continue
         while not STOP_EVENT.is_set():
             nonce = get_random_bytes(64).hex()
-            b['nonce'] = nonce
-            if block.is_mined(b):
-                logger.info(f'Mined block: {b}')
-                HANDLER(b)
+            transaction['nonce'] = nonce
+            if block.is_mined(transaction):
+                logger.info(f'Mined block: {transaction}')
+                block.add_if_valid(transaction)
+                communication.broadcast(transaction, 'block')
                 break

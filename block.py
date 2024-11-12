@@ -1,22 +1,27 @@
-from dataclasses import dataclass
-from Crypto.Hash import SHA256
-from Crypto.Random import get_random_bytes
-from crypto import hash
+from datetime import datetime
+
 from common import logger
+from crypto import hash
 
 BLOCKS = [{
     'previous_hash': 64 * '0',
     'content': 'COINBASE',
-    'nonce': 128 * '0'
+    'date': int(datetime(2024, 11, 1, 0, 0, 0).timestamp() * 1000),
+    'nonce': 'd1ff6478faa875780d959dba441c8612c0be270df1bf5700d3573317422457a389ebd902a360fce7e9637767ace265a866e4a029d85906385c013b84f2a4f65d'
 }]
-MINE_PADDING = 12
+MINE_PADDING = 17
+# todo: scale difficulty over time?
+
+def get_last_block_hash():
+    return hash_block(BLOCKS[-1])
 
 
-def get_blocks():
+def get_blocks_content():
     return [b['content'] for b in BLOCKS]
 
 
 def add_if_valid(block):
+    # todo: validate block contains all required fields
     if is_valid(block):
         logger.debug(f'Adding block to chain: {block}')
         BLOCKS.append(block)
@@ -32,12 +37,5 @@ def is_mined(block):
 
 
 def hash_block(block):
-    return hash(block['previous_hash'] + hash(block['content'] + block['nonce']))
-
-# def mine():
-#     while True:
-#         nonce = get_random_bytes(32)
-#         digest = SHA256.new(nonce).hexdigest()
-#         binary_digest = bin(int(digest, 24))[2:].zfill(256)
-#         if binary_digest.startswith(16 * '0'):
-#             return binary_digest
+    fields = hash(block['previous_hash']) + hash(block['content']) + hash(str(block['date'])) + hash(block['nonce'])
+    return hash(fields)

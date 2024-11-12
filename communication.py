@@ -12,8 +12,6 @@ RECEIVED_MESSAGES = []
 HANDLER_FUNCTION = lambda x, y: None
 
 
-# todo: get rid of globals one day
-
 
 def handle_client(conn, node):
     with conn:
@@ -30,10 +28,8 @@ def handle_client(conn, node):
                 delete_node(node)
                 break
             data = data.decode('utf-8')
-            logger.debug(f'DECODED: {data}, {type(data)}')
             message_digest = hash(data)
             data = json.loads(data)
-            logger.debug(f'LOADED: {data}, {type(data)}')
             if TYPE_METADATA_FIELD not in data:
                 logger.warn(f'Dropping data as it does not contain message type: {data}')
                 continue
@@ -42,9 +38,8 @@ def handle_client(conn, node):
                 continue
             RECEIVED_MESSAGES.append(message_digest)
             logger.debug(f'Received data from node {node}: {data}')
-            broadcast(data, omit_node=node)
-            message_type = data[TYPE_METADATA_FIELD]
-            del data[TYPE_METADATA_FIELD]
+            message_type = data.pop(TYPE_METADATA_FIELD)
+            broadcast(data, message_type, node)
             HANDLER_FUNCTION(data, message_type)
 
 
@@ -78,23 +73,24 @@ def connect(port):
 
 
 # todo: refactor this (data_type might be required now)
-def broadcast(data_dict: dict, data_type=None, omit_node=None):
-    if data_type is not None:
-        data_dict[TYPE_METADATA_FIELD] = data_type
+def broadcast(data_dict: dict, data_type, omit_node=None):
+    data = data_dict.copy()
+    data[TYPE_METADATA_FIELD] = data_type
     # todo: log omit_node
-    logger.debug(f'Broadcasting to connections {list(CONNECTIONS.keys())} data: {data_dict}')
-    send_and_delete_inactive(data_dict, omit_node)
+    logger.debug(f'Broadcasting to connections {list(CONNECTIONS.keys())} data: {data}')
+    send_and_delete_inactive(data, omit_node)
 
 
 def send_and_delete_inactive(message: dict, omit_node=None):
     inactive_nodes = []
+    message = json.dumps(message)
+    RECEIVED_MESSAGES.append(hash(message))
+    message = message.encode('utf-8')
     for node, conn in CONNECTIONS.items():
         try:
             if node == omit_node:
                 continue
-            message = json.dumps(message)
-            RECEIVED_MESSAGES.append(hash(message))
-            conn.sendall(message.encode('utf-8'))
+            conn.sendall(message)
         except ConnectionResetError:
             logger.warn(f'Node {node} became inactive and will be deleted from connections.')
             inactive_nodes.append(node)
