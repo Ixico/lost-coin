@@ -20,6 +20,12 @@ def get_blocks_content():
     return [b['content'] for b in BLOCKS]
 
 
+def get_block_details(i):
+    block_details = BLOCKS[i].copy()
+    block_details['hash'] = hash_block(block_details)
+    block_details['date'] = str(datetime.fromtimestamp(block_details['date'] / 1000))
+    return block_details
+
 def add_if_valid(block):
     # todo: validate block contains all required fields
     if is_valid(block):
