@@ -65,21 +65,18 @@ def blockchain_view():
             break
         elif event == "publish_new_block":
             block_content = sg.popup_get_text("Enter content for the new block:", "New Block Content")
-            node.create_transaction(block_content)
+            if block_content:
+                node.create_transaction(block_content)
         elif event == "block_list":
-            print('debug')
-            selected_index = window["block_list"].get_indexes()[0]  # Get index of selected item
-            print(f"Block {selected_index} clicked.")  # Debugging print
-            show_block_details(selected_index)  # Show block details in a popup
+            selected_index = window["block_list"].get_indexes()[0]
+            show_block_details(selected_index)
         window['block_list'].update(values=block.get_blocks_content())
     window.close()
 
 
 def show_block_details(block_index):
-    """Display block details in a popup."""
-    # Retrieve the block details (for simplicity, assuming block index is valid)
-    block_detail = block.get_block_details(block_index)  # Replace this with your actual block details logic
-    sg.popup("Block Details", '\n'.join(f"{key}: {value}" for key, value in block_detail.items()))
+    block_detail = block.get_block_details(block_index)
+    sg.popup("Block Details", '\n\n'.join(f"{key}: {value}" for key, value in block_detail.items()))
 
 
 def mining_view():

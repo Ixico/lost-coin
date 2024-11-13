@@ -7,7 +7,7 @@ BLOCKS = [{
     'previous_hash': 64 * '0',
     'content': 'COINBASE',
     'date': int(datetime(2024, 11, 1, 0, 0, 0).timestamp() * 1000),
-    'nonce': 'd1ff6478faa875780d959dba441c8612c0be270df1bf5700d3573317422457a389ebd902a360fce7e9637767ace265a866e4a029d85906385c013b84f2a4f65d'
+    'nonce': '7e9a0e88b1ff5f09dab01c5dcda74cf632e93ba78b6836bcdc12024534e3df69e7b702e068526f9b1af05a7d28b053bb4d64565b735d95bbfac77351478747e3'
 }]
 MINE_PADDING = 17
 # todo: scale difficulty over time?
