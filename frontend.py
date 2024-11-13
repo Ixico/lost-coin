@@ -21,7 +21,7 @@ def create_blockchain_view():
     return [
         [sg.Text("Blockchain:")],
         [sg.Listbox(values=[], size=(40, 10), key="block_list", select_mode=sg.LISTBOX_SELECT_MODE_SINGLE, enable_events=True)],
-        [sg.Button("Publish New Block", key="publish_new_block")]
+        [sg.Button("Publish New Transaction", key="publish_new_transaction")]
     ]
 
 
@@ -63,8 +63,8 @@ def blockchain_view():
         event, values = window.read(timeout=100)
         if event == sg.WINDOW_CLOSED:
             break
-        elif event == "publish_new_block":
-            block_content = sg.popup_get_text("Enter content for the new block:", "New Block Content")
+        elif event == "publish_new_transaction":
+            block_content = sg.popup_get_text("Enter content for the new transaction:", "New Transaction Content")
             if block_content:
                 node.create_transaction(block_content)
         elif event == "block_list":

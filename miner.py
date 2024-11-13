@@ -3,6 +3,7 @@ import communication
 from common import STOP_EVENT, logger
 import block
 from Crypto.Random import get_random_bytes
+import time
 
 TRANSACTIONS = deque()
 
@@ -24,6 +25,7 @@ def start_mining():
             currently_mined['previous_hash'] = block.get_last_block_hash()
             logger.debug(f'Mining block {currently_mined}')
         except IndexError:
+            time.sleep(1)
             continue
         while not STOP_EVENT.is_set():
             nonce = get_random_bytes(64).hex()
