@@ -18,5 +18,10 @@ In the second milestone we've introduced block creation mechanism. Blocks are cr
 ### Test Scenarios
 1.  1 miner
 
+### Requirements for 3rd milestone
+1. Create transactions, e.g. in json format (the first transaction in the list should be a coinbase transaction creating new ‘coins’)
+2. Reaching consensus (proof-of-work method)
+3. Validation of transactions for double-spending
+4. Calculation of current account balances
 > **Note**: This project is currently under development.
 >
