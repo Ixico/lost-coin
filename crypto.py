@@ -50,4 +50,3 @@ def generate_keys(master_key):
 
 def hash(data: str):
     return SHA256.new(data.encode('utf-8')).hexdigest()
-

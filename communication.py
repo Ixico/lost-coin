@@ -72,9 +72,12 @@ def connect(port):
         shutdown()
 
 
+# todo: refactor this (data_type might be required now)
 def broadcast(data_dict: dict, data_type, omit_node=None):
     data = data_dict.copy()
     data[TYPE_METADATA_FIELD] = data_type
+    # todo: log omit_node
+    logger.debug(f'Broadcasting to connections {list(CONNECTIONS.keys())} data: {data}')
     logger.debug(f'Broadcasting to connections {list(CONNECTIONS.keys())} data: {data}, omitting node: {omit_node}')
     send_and_delete_inactive(data, omit_node)
 

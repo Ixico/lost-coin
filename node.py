@@ -19,9 +19,8 @@ def handler(data, message_type):
         block.add_if_valid(data)
 
 
-def create_transaction(sender_private_key, sender_public_key, recipient, amount, inputs):
-    new_transaction = transaction.create_transfer_transaction(sender_private_key, sender_public_key, recipient, amount, inputs)
-    communication.broadcast(new_transaction, 'transaction')
+def create_transaction(content):
+    communication.broadcast(transaction.create(content), 'transaction')
 
 
 def create(port, registration_port, is_miner=False):
