@@ -27,7 +27,6 @@ def start_mining():
             currently_mined['previous_hash'] = block.get_last_block_hash()
             logger.debug(f'Mining block {currently_mined}')
         except IndexError:
-            logger.debug("No transactions in queue. Waiting for transactions to mine.")
             time.sleep(1)
             continue
 

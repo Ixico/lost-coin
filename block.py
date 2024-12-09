@@ -72,3 +72,28 @@ def create_new_block(transactions):
         "nonce": None  # Ustawione podczas mining
     }
     return new_block
+
+def calculate_balances():
+    """
+    Oblicza aktualne saldo każdego użytkownika na podstawie wszystkich transakcji w blockchainie.
+
+    Returns:
+        dict: Mapa adresów użytkowników do ich sald.
+    """
+    balances = {}
+
+    for block in BLOCKS:
+        for transaction in block["content"]:
+            # Przetwarzanie wyjść transakcji (przychody użytkowników)
+            for output in transaction["outputs"]:
+                address = output["address"]
+                amount = output["amount"]
+                balances[address] = balances.get(address, 0) + amount
+
+            # Przetwarzanie wejść transakcji (wydatki użytkowników)
+            for input_tx in transaction["inputs"]:
+                address = input_tx["address"]
+                amount = input_tx["amount"]
+                balances[address] = balances.get(address, 0) - amount
+
+    return balances

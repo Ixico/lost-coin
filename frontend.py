@@ -105,6 +105,7 @@ def blockchain_view(node_id, identity_name):
     """
     Widok blockchaina z wyświetlaniem SHA256 klucza publicznego.
     """
+    # Generuj adres użytkownika (SHA256 klucza publicznego)
     user_address = wallet.generate_address(node_id, identity_name)
 
     layout = [
@@ -139,7 +140,9 @@ def blockchain_view(node_id, identity_name):
                 except Exception as e:
                     sg.popup(f"Error creating transaction: {str(e)}")
         elif event == "Refresh Balance":
-            balance = transaction.calculate_balance(user_address)
+            # Obliczanie aktualnego salda
+            balances = block.calculate_balances()
+            balance = balances.get(user_address, 0)
             window["user_balance"].update(str(balance))
         window["block_list"].update(values=block.get_blocks_content())
     window.close()

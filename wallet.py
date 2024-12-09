@@ -98,16 +98,37 @@ def get_identities(node_id):
     return [file.stem for file in directory.glob('*.pem')]
 
 
-def get_private_key(node_id, identity_name):
+def get_private_key(node_id, identity_name, decrypted=False):
     """
     Pobiera klucz prywatny użytkownika na podstawie nazwy tożsamości i węzła.
+    Może zwrócić zaszyfrowany klucz lub klucz odblokowany (niezaszyfrowany).
+
+    Args:
+        node_id (str): Identyfikator węzła.
+        identity_name (str): Nazwa tożsamości użytkownika.
+        decrypted (bool): Czy klucz ma być odblokowany.
+
+    Returns:
+        bytes: Klucz prywatny w formacie PEM.
     """
     wallet_path = get_wallet_path(node_id)
     identity_file_name = os.path.join(wallet_path, f"{identity_name}.pem")
+
     if not os.path.exists(identity_file_name):
-        raise FileNotFoundError(f"Identity {identity_name} does not exist for node {node_id}.")
+        raise FileNotFoundError(f"Private key for identity {identity_name} does not exist for node {node_id}.")
+
     with open(identity_file_name, 'rb') as file:
-        return file.read()
+        encrypted_key = file.read()
+    from Crypto.PublicKey import RSA
+    if not decrypted:
+        return encrypted_key  # Zwraca zaszyfrowany klucz
+
+    # Odblokuj zaszyfrowany klucz prywatny za pomocą master_key
+    if node_id not in master_keys:
+        raise ValueError(f"Wallet for node {node_id} is not unlocked. Please unlock it first.")
+    from Crypto.PublicKey import RSA
+    master_key = master_keys[node_id]
+    return RSA.import_key(encrypted_key, passphrase=master_key)
 
 def get_public_key(node_id, identity_name):
     wallet_path = get_wallet_path(node_id)

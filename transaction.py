@@ -1,23 +1,9 @@
 import hashlib
-import json
 import datetime
-
-def create_coinbase_transaction(recipient, amount, block_index):
-    """
-    Creates transaction coinbase, which creates money
-    """
-    transaction = {
-        "id": None,
-        "type": "coinbase",
-        "inputs": [],
-        "outputs": [{"address": recipient, "amount": amount}],
-        "date": int(datetime.datetime.now().timestamp() * 1000),
-        "block_index": block_index,
-        "signature": None
-    }
-    transaction["id"] = calculate_transaction_hash(transaction)
-    return transaction
-
+import json
+from wallet import get_private_key
+from Crypto.Signature import pkcs1_15
+from Crypto.Hash import SHA256
 def calculate_transaction_hash(transaction):
     """
     Calculates transaction hash
@@ -73,3 +59,44 @@ def is_output_spent(tx_id, output_index):
                 if tx_input['id'] == tx_id and tx_input['output_index'] == output_index:
                     return True
     return False
+
+
+
+def create_transfer_transaction(node_id, identity_name, recipient, amount, inputs):
+    """
+    Tworzy transakcję transferu środków.
+
+    Args:
+        node_id (str): Identyfikator węzła nadawcy.
+        identity_name (str): Nazwa tożsamości nadawcy.
+        recipient (str): Adres odbiorcy.
+        amount (float): Kwota do wysłania.
+        inputs (list): Lista wejść transakcji.
+
+    Returns:
+        dict: Transakcja w formacie JSON.
+    """
+    # Załaduj klucz prywatny (odblokowany)
+    private_key = get_private_key(node_id, identity_name, decrypted=True)
+
+    transaction = {
+        "id": None,
+        "type": "transfer",
+        "inputs": inputs,
+        "outputs": [
+            {"address": recipient, "amount": amount}
+        ],
+        "date": int(datetime.datetime.now().timestamp() * 1000),
+        "block_index": None,
+        "signature": None
+    }
+
+    # Generowanie ID transakcji
+    transaction_json = json.dumps(transaction, sort_keys=True).encode("utf-8")
+    transaction["id"] = hashlib.sha256(transaction_json).hexdigest()
+
+    # Podpisanie transakcji
+    transaction_hash = SHA256.new(transaction_json)
+    transaction["signature"] = pkcs1_15.new(private_key).sign(transaction_hash).hex()
+
+    return transaction
