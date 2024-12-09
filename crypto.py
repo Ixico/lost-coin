@@ -47,6 +47,13 @@ def generate_keys(master_key):
         prot_params={'iteration_count': 1000}
     )
 
+def restore_key(master_key: str): # master_key should be hex
+    master_key = base64.b64encode(bytes.fromhex(master_key)).decode('utf-8')
+    # RSA.import_key('wallet/test.pem', master_key)
+    with open('wallet/test.pem') as file:
+        content = file.read()
+    return RSA.import_key(content, master_key)
+
 
 def hash(data: str):
     return SHA256.new(data.encode('utf-8')).hexdigest()
