@@ -98,7 +98,7 @@ def setup_wallet():
         wallet.create_identity(node_id, identity_name)
         sg.popup(f"Identity {identity_name} created successfully.")
 
-    return node_id, identity_name
+    return node_id, identity_name, password
 
 
 def blockchain_view(node_id, identity_name):
@@ -126,17 +126,18 @@ def blockchain_view(node_id, identity_name):
             amount = sg.popup_get_text("Enter amount to send:")
             if recipient and amount:
                 try:
-                    # Tworzenie transakcji
+                    # Tworzenie i podpisywanie transakcji
                     amount = float(amount)
                     inputs = transaction.select_inputs(user_address, amount)
-                    transaction_id = transaction.create_transfer_transaction(
-                        sender_private_key=wallet.get_private_key(node_id, identity_name),
-                        sender_public_key=user_address,
+                    transaction_data = transaction.create_transfer_transaction(
+                        node_id=node_id,
+                        identity_name=identity_name,
                         recipient=recipient,
                         amount=amount,
-                        inputs=inputs
+                        inputs=inputs,
+                        password=password
                     )
-                    sg.popup(f"Transaction created and signed successfully!\nTransaction ID: {transaction_id}")
+                    sg.popup(f"Transaction created and signed successfully!\nTransaction ID: {transaction_data['id']}")
                 except Exception as e:
                     sg.popup(f"Error creating transaction: {str(e)}")
         elif event == "Refresh Balance":
@@ -181,7 +182,7 @@ if node_data is None:
     shutdown()
     exit()
 
-node_id, identity_name = node_data
+node_id, identity_name, password = node_data
 
 result = connect_view()
 if result is None:
@@ -193,16 +194,10 @@ port, registration_port, is_miner = result
 node.create(to_int(port), to_int(registration_port), is_miner)
 
 if is_miner:
-    if not identity_name:
-        sg.popup("Miner's identity is required.")
-        shutdown()
-        exit()
-    sg.popup(f"Starting miner mode with identity: {identity_name}")
-    threading.Thread(target=miner.start_mining, args=(identity_name,)).start()
-    mining_view()
+    sg.popup(f"Starting miner mode for node {node_id}.")
+    threading.Thread(target=miner.start_mining).start()
+    mining_view()  # Uruchamia widok minera
 
-else:
-    blockchain_view(node_id, identity_name)
-
+blockchain_view(node_id, identity_name)
 shutdown()
 

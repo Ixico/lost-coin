@@ -1,5 +1,8 @@
 import os
 from pathlib import Path
+
+from Crypto.PublicKey import RSA
+
 from common import logger, CommonException
 import crypto
 
@@ -98,37 +101,21 @@ def get_identities(node_id):
     return [file.stem for file in directory.glob('*.pem')]
 
 
-def get_private_key(node_id, identity_name, decrypted=False):
-    """
-    Pobiera klucz prywatny użytkownika na podstawie nazwy tożsamości i węzła.
-    Może zwrócić zaszyfrowany klucz lub klucz odblokowany (niezaszyfrowany).
+def get_private_key(node_id, identity_name, password):
 
-    Args:
-        node_id (str): Identyfikator węzła.
-        identity_name (str): Nazwa tożsamości użytkownika.
-        decrypted (bool): Czy klucz ma być odblokowany.
-
-    Returns:
-        bytes: Klucz prywatny w formacie PEM.
-    """
     wallet_path = get_wallet_path(node_id)
     identity_file_name = os.path.join(wallet_path, f"{identity_name}.pem")
-
+    salt_file_name = os.path.join(wallet_path, "metadata.txt")
     if not os.path.exists(identity_file_name):
         raise FileNotFoundError(f"Private key for identity {identity_name} does not exist for node {node_id}.")
-
+    with open(salt_file_name, 'r') as file:
+        line = file.readline()
+        salt = line.split(':')[0]
+    salt = bytes.fromhex(salt)
     with open(identity_file_name, 'rb') as file:
         encrypted_key = file.read()
-    from Crypto.PublicKey import RSA
-    if not decrypted:
-        return encrypted_key  # Zwraca zaszyfrowany klucz
 
-    # Odblokuj zaszyfrowany klucz prywatny za pomocą master_key
-    if node_id not in master_keys:
-        raise ValueError(f"Wallet for node {node_id} is not unlocked. Please unlock it first.")
-    from Crypto.PublicKey import RSA
-    master_key = master_keys[node_id]
-    return RSA.import_key(encrypted_key, passphrase=master_key)
+    return crypto.restore_key(encrypted_key, password, salt)
 
 def get_public_key(node_id, identity_name):
     wallet_path = get_wallet_path(node_id)
@@ -146,16 +133,3 @@ def generate_address(node_id, identity_name):
     address = SHA256.new(rsa_key.public_key().export_key()).hexdigest()
 
     return address
-
-def sign_transaction(node_id, transaction_id, identity_name):
-    """
-    Podpisuje ID transakcji za pomocą klucza prywatnego dla konkretnej tożsamości węzła.
-    """
-    private_key = get_private_key(node_id, identity_name)
-    from Crypto.Signature import pkcs1_15
-    from Crypto.PublicKey import RSA
-    from Crypto.Hash import SHA256
-
-    key = RSA.import_key(private_key)
-    h = SHA256.new(transaction_id.encode())
-    return pkcs1_15.new(key).sign(h).hex()

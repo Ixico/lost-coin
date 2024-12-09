@@ -62,7 +62,7 @@ def is_output_spent(tx_id, output_index):
 
 
 
-def create_transfer_transaction(node_id, identity_name, recipient, amount, inputs):
+def create_transfer_transaction(node_id, identity_name, recipient, amount, inputs, password):
     """
     Tworzy transakcję transferu środków.
 
@@ -77,7 +77,7 @@ def create_transfer_transaction(node_id, identity_name, recipient, amount, input
         dict: Transakcja w formacie JSON.
     """
     # Załaduj klucz prywatny (odblokowany)
-    private_key = get_private_key(node_id, identity_name, decrypted=True)
+    private_key = get_private_key(node_id, identity_name, password)
 
     transaction = {
         "id": None,
