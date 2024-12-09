@@ -18,11 +18,10 @@ def select_inputs(address, required_amount):
     Wybiera odpowiednie wejścia (UTXO), aby zaspokoić żądaną kwotę.
     """
     from block import BLOCKS  # Przenieś import do wnętrza funkcji
-    utxos = []  # Lista dostępnych UTXO
+    utxos = []
     selected_inputs = []
     total_amount = 0
 
-    # Iteruj przez blockchain w poszukiwaniu UTXO dla danego adresu
     for block in BLOCKS:
         for tx in block.get('content', []):
             for output_index, output in enumerate(tx['outputs']):
@@ -44,7 +43,7 @@ def select_inputs(address, required_amount):
             break
 
     if total_amount < required_amount:
-        raise ValueError("Insufficient funds.")
+        raise ValueError(f"Insufficient funds. Required: {required_amount}, Available: {total_amount}")
 
     return selected_inputs
 

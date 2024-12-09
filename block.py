@@ -1,3 +1,4 @@
+import hashlib
 from datetime import datetime
 
 import json
@@ -16,9 +17,9 @@ BLOCKS = [{
         "signature": None
     }],
     'date': int(datetime(2024, 11, 1, 0, 0, 0).timestamp() * 1000),
-    'nonce': '7e9a0e88b1ff5f09dab01c5dcda74cf632e93ba78b6836bcdc12024534e3df69e7b702e068526f9b1af05a7d28b053bb4d64565b735d95bbfac77351478747e3'
+    'nonce': '0b43cd9ad015b4cd4433bac8ccf8207b08b4e906dd198f30a9667ed8fd3cab91407f922885bf45f9f13177fff76d1edf894dc3d9077c5a36c899e4584dcda5f7'
 }]
-MINE_PADDING = 17
+MINE_PADDING = 7
 # todo: scale difficulty over time?
 
 def get_last_block_hash():
@@ -37,9 +38,18 @@ def get_block_details(i):
 
 def add_if_valid(block):
     # todo: validate block contains all required fields
-    if is_valid(block):
-        logger.debug(f'Adding block to chain: {block}')
-        BLOCKS.append(block)
+    if not is_valid(block):
+        logger.error(f"Block is not valid: {block}")
+        return
+
+    # Walidacja transakcji w bloku
+    for transaction in block['content']:
+        if 'outputs' not in transaction or not transaction['outputs']:
+            logger.error(f"Invalid transaction in block: {transaction}")
+            return
+
+    logger.debug(f"Adding block to chain: {block}")
+    BLOCKS.append(block)
 
 
 # todo: allow forks
@@ -52,13 +62,27 @@ def is_mined(block):
 
 
 def hash_block(block):
-    fields = (
-        hash(block['previous_hash']) +
-        hash(json.dumps(block['content'], sort_keys=True)) +  # Konwertujemy listę na JSON
-        hash(str(block['date'])) +
-        hash(block['nonce'])
-    )
-    return hash(fields)
+    """
+    Oblicza hash bloku.
+    """
+    try:
+        # Sprawdź, czy przetwarzasz transakcję zamiast bloku
+        if 'content' not in block:
+            transaction_string = json.dumps(block, sort_keys=True).encode()
+            return hashlib.sha256(transaction_string).hexdigest()
+
+        # Jeśli to blok, oblicz hash normalnie
+        fields = (
+            hash(block['previous_hash']) +
+            hash(json.dumps(block['content'], sort_keys=True)) +
+            hash(str(block['date'])) +
+            hash(block['nonce'])
+        )
+        return hash(fields)
+    except Exception as e:
+        logger.error(f"Error hashing block: {e}")
+        raise
+
 
 
 def create_new_block(transactions):

@@ -46,7 +46,6 @@ def setup_wallet():
     """
     Konfiguracja portfela: tworzenie lub odblokowywanie portfela.
     """
-    # Prompt o hasło
     layout = [
         [sg.Text("Enter your wallet password:")],
         [sg.InputText(key="password", password_char="*")],
@@ -67,13 +66,13 @@ def setup_wallet():
             else:
                 sg.popup("Password cannot be empty.")
     if not password:
-        return None, None
+        return None, None, None
 
     # Konfiguracja portfela
     node_id = sg.popup_get_text("Enter node identifier (e.g., 'node1'):", "Node Registration")
     if not node_id:
         sg.popup("Node identifier is required.")
-        return None, None
+        return None, None, None
 
     try:
         if wallet.exists(node_id):
@@ -84,7 +83,7 @@ def setup_wallet():
             sg.popup(f"New wallet for node {node_id} created successfully.")
     except Exception as e:
         sg.popup(f"Error: {str(e)}")
-        return None, None
+        return None, None, None
 
     # Wyświetl dostępne tożsamości lub stwórz nową
     identities = wallet.get_identities(node_id)
@@ -98,19 +97,20 @@ def setup_wallet():
         wallet.create_identity(node_id, identity_name)
         sg.popup(f"Identity {identity_name} created successfully.")
 
-    return node_id, identity_name, password
+    # Generuj adres SHA256 użytkownika
+    sender_address = wallet.generate_address(node_id, identity_name)
+
+    return node_id, identity_name, password, sender_address
 
 
-def blockchain_view(node_id, identity_name):
+def blockchain_view(node_id, identity_name, password, sender_address):
     """
     Widok blockchaina z wyświetlaniem SHA256 klucza publicznego.
     """
-    # Generuj adres użytkownika (SHA256 klucza publicznego)
-    user_address = wallet.generate_address(node_id, identity_name)
-
+    # Wyświetl adres użytkownika
     layout = [
         [sg.Text(f"Node: {node_id}, Identity: {identity_name}")],
-        [sg.Text("Your Address (SHA256):"), sg.InputText(user_address, key="user_address", readonly=True)],
+        [sg.Text("Your Address (SHA256):"), sg.InputText(sender_address, key="user_address", readonly=True)],
         [sg.Text("Your Balance:"), sg.Text("0", key="user_balance")],
         [sg.Text("Blockchain:")],
         [sg.Listbox(values=[], size=(60, 10), key="block_list", select_mode=sg.LISTBOX_SELECT_MODE_SINGLE, enable_events=True)],
@@ -126,24 +126,23 @@ def blockchain_view(node_id, identity_name):
             amount = sg.popup_get_text("Enter amount to send:")
             if recipient and amount:
                 try:
-                    # Tworzenie i podpisywanie transakcji
                     amount = float(amount)
-                    inputs = transaction.select_inputs(user_address, amount)
-                    transaction_data = transaction.create_transfer_transaction(
-                        node_id=node_id,
-                        identity_name=identity_name,
+                    # Tworzenie transakcji i dodawanie do kolejki
+                    transaction_data = node.create_transaction(
+                        sender=sender_address,
                         recipient=recipient,
                         amount=amount,
-                        inputs=inputs,
+                        node_id=node_id,
+                        identity_name=identity_name,
                         password=password
                     )
-                    sg.popup(f"Transaction created and signed successfully!\nTransaction ID: {transaction_data['id']}")
+                    sg.popup(f"Transaction created and added to mining queue!\nTransaction ID: {transaction_data['id']}")
                 except Exception as e:
                     sg.popup(f"Error creating transaction: {str(e)}")
         elif event == "Refresh Balance":
             # Obliczanie aktualnego salda
             balances = block.calculate_balances()
-            balance = balances.get(user_address, 0)
+            balance = balances.get(sender_address, 0)
             window["user_balance"].update(str(balance))
         window["block_list"].update(values=block.get_blocks_content())
     window.close()
@@ -182,7 +181,7 @@ if node_data is None:
     shutdown()
     exit()
 
-node_id, identity_name, password = node_data
+node_id, identity_name, password, sender_address = node_data
 
 result = connect_view()
 if result is None:
@@ -198,6 +197,6 @@ if is_miner:
     threading.Thread(target=miner.start_mining).start()
     mining_view()  # Uruchamia widok minera
 
-blockchain_view(node_id, identity_name)
+blockchain_view(node_id, identity_name, password, sender_address)
 shutdown()
 
