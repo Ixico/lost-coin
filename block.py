@@ -10,7 +10,7 @@ BLOCKS = [{
         "id": None,
         "type": "coinbase",
         "inputs": [],
-        "outputs": [{"address": "root_user_address", "amount": 100}],
+        "outputs": [{"address": "b95226e8fe7ca8163ee5c7acc5cb3d53d3b41bb14ef1a9b7d30f0d9c264f8e4e", "amount": 100}],
         "date": int(datetime.now().timestamp() * 1000),
         "block_index": 0,
         "signature": None
