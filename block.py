@@ -43,9 +43,9 @@ def add_if_valid(block):
         return
 
     # Walidacja transakcji w bloku
-    for transaction in block['content']:
-        if 'outputs' not in transaction or not transaction['outputs']:
-            logger.error(f"Invalid transaction in block: {transaction}")
+    for tx in block['content']:
+        if not isinstance(tx, dict) or 'id' not in tx or 'outputs' not in tx:
+            logger.error(f"Invalid transaction in block: {tx}")
             return
 
     logger.debug(f"Adding block to chain: {block}")
