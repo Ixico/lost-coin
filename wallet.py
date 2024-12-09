@@ -59,17 +59,30 @@ def unlock(node_id, password):
 def create_identity(node_id, name):
     """
     Tworzy nową tożsamość w portfelu dla danego węzła.
+    Automatycznie generuje klucz prywatny i publiczny, zapisując oba.
     """
     wallet_path = get_wallet_path(node_id)
     if node_id not in master_keys:
         raise ValueError(f"Wallet for node {node_id} is not unlocked. Please unlock it first.")
-    generated_keys = crypto.generate_keys(master_keys[node_id])
+
+    # Generowanie pary kluczy
+    private_key, public_key = crypto.generate_keys(master_keys[node_id])
     identity_file_name = os.path.join(wallet_path, f"{name}.pem")
+    identity_public_file_name = os.path.join(wallet_path, f"{name}_public.pem")
+
+    # Sprawdzenie, czy tożsamość już istnieje
     if os.path.exists(identity_file_name):
         logger.warn(f'Identity {name} already exists for node {node_id}.')
         raise CommonException()
+
+    # Zapis klucza prywatnego
     with open(identity_file_name, 'wb') as file:
-        file.write(generated_keys)
+        file.write(private_key)
+
+    # Zapis klucza publicznego
+    with open(identity_public_file_name, 'wb') as public_file:
+        public_file.write(public_key)
+
     logger.info(f'Identity {name} created successfully for node {node_id}.')
     return True
 
@@ -96,6 +109,22 @@ def get_private_key(node_id, identity_name):
     with open(identity_file_name, 'rb') as file:
         return file.read()
 
+def get_public_key(node_id, identity_name):
+    wallet_path = get_wallet_path(node_id)
+    identity_public_file_name = os.path.join(wallet_path, f"{identity_name}_public.pem")
+    if not os.path.exists(identity_public_file_name):
+        raise FileNotFoundError(f"Public key for identity {identity_name} does not exist for node {node_id}.")
+    with open(identity_public_file_name, 'rb') as file:
+        return file.read()
+
+def generate_address(node_id, identity_name):
+    public_key_bytes = get_public_key(node_id, identity_name)
+    from Crypto.PublicKey import RSA
+    from Crypto.Hash import SHA256
+    rsa_key = RSA.import_key(public_key_bytes)
+    address = SHA256.new(rsa_key.public_key().export_key()).hexdigest()
+
+    return address
 
 def sign_transaction(node_id, transaction_id, identity_name):
     """

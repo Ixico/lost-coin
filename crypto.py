@@ -40,12 +40,15 @@ def calculate_pbkdf2(password: str, salt: bytes):
 def generate_keys(master_key):
     key = RSA.generate(2048)
     master_key = base64.b64encode(bytes.fromhex(master_key)).decode('utf-8')
-    return key.export_key(
+    private_key = key.export_key(
         passphrase=master_key,
         pkcs=8,
         protection='PBKDF2WithHMAC-SHA256AndAES256-CBC',
         prot_params={'iteration_count': 1000}
     )
+    public_key = key.public_key().export_key(format='PEM')
+
+    return private_key, public_key
 
 
 def hash(data: str):

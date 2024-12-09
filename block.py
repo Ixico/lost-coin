@@ -6,7 +6,15 @@ from crypto import hash
 
 BLOCKS = [{
     'previous_hash': 64 * '0',
-    'content': 'COINBASE',
+    'content': [{
+        "id": None,
+        "type": "coinbase",
+        "inputs": [],
+        "outputs": [{"address": "root_user_address", "amount": 100}],
+        "date": int(datetime.now().timestamp() * 1000),
+        "block_index": 0,
+        "signature": None
+    }],
     'date': int(datetime(2024, 11, 1, 0, 0, 0).timestamp() * 1000),
     'nonce': '7e9a0e88b1ff5f09dab01c5dcda74cf632e93ba78b6836bcdc12024534e3df69e7b702e068526f9b1af05a7d28b053bb4d64565b735d95bbfac77351478747e3'
 }]
