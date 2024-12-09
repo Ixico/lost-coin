@@ -1,5 +1,6 @@
 from datetime import datetime
 
+import json
 from common import logger
 from crypto import hash
 
@@ -43,24 +44,23 @@ def is_mined(block):
 
 
 def hash_block(block):
-    fields = hash(block['previous_hash']) + hash(block['content']) + hash(str(block['date'])) + hash(block['nonce'])
+    fields = (
+        hash(block['previous_hash']) +
+        hash(json.dumps(block['content'], sort_keys=True)) +  # Konwertujemy listę na JSON
+        hash(str(block['date'])) +
+        hash(block['nonce'])
+    )
     return hash(fields)
 
 
-def create_new_block(transactions, miner_address):
-    from transaction import create_coinbase_transaction  # Przenieś import do wnętrza funkcji
-
+def create_new_block(transactions):
     if not transactions:
         raise ValueError("Transaction list cannot be empty.")
-
-    block_index = len(BLOCKS)
-    coinbase_transaction = create_coinbase_transaction(miner_address, 50, block_index)
-    transactions.insert(0, coinbase_transaction)
 
     new_block = {
         "previous_hash": get_last_block_hash(),
         "content": transactions,
         "date": int(datetime.now().timestamp() * 1000),
-        "nonce": None  # To będzie ustawione podczas mining
+        "nonce": None  # Ustawione podczas mining
     }
     return new_block
