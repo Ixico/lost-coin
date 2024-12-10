@@ -12,14 +12,14 @@ BLOCKS = [{
         "type": "coinbase",
         "inputs": [],
         "outputs": [{"address": "b95226e8fe7ca8163ee5c7acc5cb3d53d3b41bb14ef1a9b7d30f0d9c264f8e4e", "amount": 100}],
-        "date": int(datetime.now().timestamp() * 1000),
+        "date": int(datetime(2024, 11, 1, 0, 0, 0).timestamp() * 1000),
         "block_index": 0,
         "signature": None
     }],
     'date': int(datetime(2024, 11, 1, 0, 0, 0).timestamp() * 1000),
-    'nonce': '0b43cd9ad015b4cd4433bac8ccf8207b08b4e906dd198f30a9667ed8fd3cab91407f922885bf45f9f13177fff76d1edf894dc3d9077c5a36c899e4584dcda5f7'
+    'nonce': '6756'
 }]
-MINE_PADDING = 7
+MINE_PADDING = 4
 # todo: scale difficulty over time?
 
 def get_last_block_hash():

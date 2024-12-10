@@ -1,3 +1,4 @@
 /wallets/
 wallet_test.py
 /testingprivatekey.py
+/calculating genesys_block.py
