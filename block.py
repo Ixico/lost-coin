@@ -11,13 +11,13 @@ BLOCKS = [{
         "id": None,
         "type": "coinbase",
         "inputs": [],
-        "outputs": [{"address": "b95226e8fe7ca8163ee5c7acc5cb3d53d3b41bb14ef1a9b7d30f0d9c264f8e4e", "amount": 100}],
+        "outputs": [{"address": "b5a83945ed36e72cda3a3f26357bd17bfa78b0a79dee0ad95b32b52241008ad7", "amount": 100}],
         "date": int(datetime(2024, 11, 1, 0, 0, 0).timestamp() * 1000),
         "block_index": 0,
         "signature": None
     }],
     'date': int(datetime(2024, 11, 1, 0, 0, 0).timestamp() * 1000),
-    'nonce': '6756'
+    'nonce': '73884'
 }]
 MINE_PADDING = 4
 # todo: scale difficulty over time?
