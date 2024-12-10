@@ -3,8 +3,8 @@ from Crypto.Hash import SHA256
 
 
 # Przykładowe dane użytkownika
-node_id = "user2"
-identity_name = "user_id_2"
+node_id = "user1"
+identity_name = "user_id_1"
 
 try:
     address = wallet.generate_address(node_id, identity_name)

@@ -105,19 +105,23 @@ def calculate_balances():
         dict: Mapa adresów użytkowników do ich sald.
     """
     balances = {}
-
     for block in BLOCKS:
-        for transaction in block["content"]:
-            # Przetwarzanie wyjść transakcji (przychody użytkowników)
-            for output in transaction["outputs"]:
+        for tx in block['content']:
+            # Process outputs: Credit to recipient's address
+            for output in tx.get('outputs', []):
                 address = output["address"]
                 amount = output["amount"]
-                balances[address] = balances.get(address, 0) + amount
+                if address in balances:
+                    balances[address] += amount
+                else:
+                    balances[address] = amount
 
-            # Przetwarzanie wejść transakcji (wydatki użytkowników)
-            for input_tx in transaction["inputs"]:
-                address = input_tx["address"]
-                amount = input_tx["amount"]
-                balances[address] = balances.get(address, 0) - amount
-
+            # Process inputs: Debit from sender's address
+            for input_tx in tx.get('inputs', []):
+                sender_address = input_tx.get("id")  # Sender's address stored in 'id'
+                amount = input_tx.get("amount", 0)
+                if sender_address in balances:
+                    balances[sender_address] -= amount
+                else:
+                    balances[sender_address] = -amount
     return balances
