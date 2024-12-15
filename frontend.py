@@ -4,7 +4,6 @@ import PySimpleGUI as sg
 import block
 import miner
 import node
-import transaction
 import wallet
 from common import STOP_EVENT, shutdown, handle_sigint
 
@@ -44,72 +43,68 @@ def connect_view():
 
 def setup_wallet():
     """
-    Konfiguracja portfela: tworzenie lub odblokowywanie portfela.
+    Setup wallet: asks for user_id and password, and chooses or creates an identity.
     """
     layout = [
-        [sg.Text("Enter your wallet password:")],
-        [sg.InputText(key="password", password_char="*")],
+        [sg.Text("Enter your user ID:"), sg.InputText(key="user_id", size=(30, 1))],
+        [sg.Text("Enter your password:"), sg.InputText(key="password", password_char="*", size=(30, 1))],
         [sg.Button("Submit"), sg.Button("Exit")]
     ]
     window = sg.Window("Wallet Setup", layout)
-    password = None
+
     while not STOP_EVENT.is_set():
         event, values = window.read(timeout=100)
         if event == sg.WINDOW_CLOSED or event == "Exit":
             shutdown()
-            break
+            return None
         elif event == "Submit":
+            user_id = values["user_id"]
             password = values["password"]
-            if password:
+            if not user_id or not password:
+                sg.popup("User ID and password are required.")
+                continue
+
+            try:
+                if wallet.exists(user_id):
+                    wallet.unlock(user_id, password)
+                    sg.popup(f"Wallet for user {user_id} unlocked successfully.")
+                else:
+                    wallet.create(user_id, password)
+                    sg.popup(f"New wallet for user {user_id} created successfully.")
+
+                # Choose or create identity
+                identities = wallet.get_identities(user_id)
+                if identities:
+                    identity_name = sg.popup_get_text(
+                        "Available identities:\n" + "\n".join(identities) +
+                        "\n\nEnter identity name to use or create a new one:"
+                    )
+                else:
+                    identity_name = sg.popup_get_text("No identities found.\nEnter name to create a new identity:")
+
+                if identity_name and identity_name not in identities:
+                    wallet.create_identity(user_id, identity_name)
+                    sg.popup(f"Identity {identity_name} created successfully.")
+
+                if not identity_name:
+                    sg.popup("No identity selected or created.")
+                    return None
+
+                sender_address = wallet.generate_address(user_id, identity_name)
+
                 window.close()
-                break
-            else:
-                sg.popup("Password cannot be empty.")
-    if not password:
-        return None, None, None
-
-    # Konfiguracja portfela
-    node_id = sg.popup_get_text("Enter node identifier (e.g., 'node1'):", "Node Registration")
-    if not node_id:
-        sg.popup("Node identifier is required.")
-        return None, None, None
-
-    try:
-        if wallet.exists(node_id):
-            wallet.unlock(node_id, password)
-            sg.popup(f"Wallet for node {node_id} unlocked successfully.")
-        else:
-            wallet.create(node_id, password)
-            sg.popup(f"New wallet for node {node_id} created successfully.")
-    except Exception as e:
-        sg.popup(f"Error: {str(e)}")
-        return None, None, None
-
-    # Wyświetl dostępne tożsamości lub stwórz nową
-    identities = wallet.get_identities(node_id)
-    if identities:
-        identity_name = sg.popup_get_text("Available identities:\n" + "\n".join(identities) +
-                                          "\n\nEnter identity name to use or create a new one:")
-    else:
-        identity_name = sg.popup_get_text("No identities found.\nEnter name to create a new identity:")
-
-    if identity_name and identity_name not in identities:
-        wallet.create_identity(node_id, identity_name)
-        sg.popup(f"Identity {identity_name} created successfully.")
-
-    # Generuj adres SHA256 użytkownika
-    sender_address = wallet.generate_address(node_id, identity_name)
-
-    return node_id, identity_name, password, sender_address
+                return user_id, identity_name, password, sender_address
+            except Exception as e:
+                sg.popup(f"Error: {str(e)}")
+    return None
 
 
-def blockchain_view(node_id, identity_name, password, sender_address):
+def blockchain_view(user_id, identity_name, password, sender_address):
     """
-    Widok blockchaina z wyświetlaniem SHA256 klucza publicznego.
+    Blockchain view showing user_id and user's address.
     """
-    # Wyświetl adres użytkownika
     layout = [
-        [sg.Text(f"Node: {node_id}, Identity: {identity_name}")],
+        [sg.Text(f"User ID: {user_id}, Identity: {identity_name}")],
         [sg.Text("Your Address (SHA256):"), sg.InputText(sender_address, key="user_address", readonly=True)],
         [sg.Text("Your Balance:"), sg.Text("0", key="user_balance")],
         [sg.Text("Blockchain:")],
@@ -117,6 +112,7 @@ def blockchain_view(node_id, identity_name, password, sender_address):
         [sg.Button("Publish Transaction"), sg.Button("Refresh Balance"), sg.Button("Exit")]
     ]
     window = sg.Window("Blockchain Node", layout)
+
     while not STOP_EVENT.is_set():
         event, values = window.read(timeout=100)
         if event == sg.WINDOW_CLOSED or event == "Exit":
@@ -127,12 +123,11 @@ def blockchain_view(node_id, identity_name, password, sender_address):
             if recipient and amount:
                 try:
                     amount = float(amount)
-                    # Tworzenie transakcji i dodawanie do kolejki
                     transaction_data = node.create_transaction(
                         sender=sender_address,
                         recipient=recipient,
                         amount=amount,
-                        node_id=node_id,
+                        user_id=user_id,
                         identity_name=identity_name,
                         password=password
                     )
@@ -140,7 +135,6 @@ def blockchain_view(node_id, identity_name, password, sender_address):
                 except Exception as e:
                     sg.popup(f"Error creating transaction: {str(e)}")
         elif event == "Refresh Balance":
-            # Obliczanie aktualnego salda
             balances = block.calculate_balances()
             balance = balances.get(sender_address, 0)
             window["user_balance"].update(str(balance))
@@ -176,27 +170,30 @@ def to_int(x):
 
 signal.signal(signal.SIGINT, handle_sigint)
 
-node_data = setup_wallet()
-if node_data is None:
+
+# Step 1: Setup Wallet
+user_data = setup_wallet()
+if user_data is None:
     shutdown()
     exit()
 
-node_id, identity_name, password, sender_address = node_data
+user_id, identity_name, password, sender_address = user_data
 
-result = connect_view()
-if result is None:
+# Step 2: Connect to Network
+connection_data = connect_view()
+if connection_data is None:
     shutdown()
     exit()
 
-port, registration_port, is_miner = result
+port, registration_port, is_miner = connection_data
+node.create(int(port), int(registration_port) if registration_port else None, is_miner)
 
-node.create(to_int(port), to_int(registration_port), is_miner)
-
+# Step 3: Miner Mode
 if is_miner:
-    sg.popup(f"Starting miner mode for node {node_id}.")
+    sg.popup(f"Starting miner mode for user {user_id}.")
     threading.Thread(target=miner.start_mining).start()
-    mining_view()  # Uruchamia widok minera
+    mining_view()
 
-blockchain_view(node_id, identity_name, password, sender_address)
+# Step 4: Blockchain View
+blockchain_view(user_id, identity_name, password, sender_address)
 shutdown()
-

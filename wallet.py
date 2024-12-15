@@ -1,8 +1,6 @@
 import os
 from pathlib import Path
-
 from Crypto.PublicKey import RSA
-
 from common import logger, CommonException
 import crypto
 
@@ -10,104 +8,116 @@ BASE_WALLET_PATH = 'wallets'
 master_keys = {}
 
 
-def get_wallet_path(node_id):
+def get_wallet_path(user_id):
     """
-    Zwraca ścieżkę do portfela dla konkretnego węzła.
+    Returns the wallet path for a specific user.
     """
-    return os.path.join(BASE_WALLET_PATH, f'wallet_{node_id}')
+    return os.path.join(BASE_WALLET_PATH, f'wallet_{user_id}')
 
 
-def get_metadata_path(node_id):
+def get_metadata_path(user_id):
     """
-    Zwraca ścieżkę do metadanych portfela dla konkretnego węzła.
+    Returns the metadata path for a specific user's wallet.
     """
-    return os.path.join(get_wallet_path(node_id), 'metadata.txt')
+    return os.path.join(get_wallet_path(user_id), 'metadata.txt')
 
 
-def exists(node_id):
+def exists(user_id):
     """
-    Sprawdza, czy portfel dla danego węzła istnieje.
+    Checks if a wallet exists for the given user.
     """
-    return os.path.exists(get_wallet_path(node_id))
+    return os.path.exists(get_wallet_path(user_id))
 
 
-def create(node_id, password):
+def create(user_id, password):
     """
-    Tworzy nowy portfel dla danego węzła.
+    Creates a new wallet for the given user.
     """
-    wallet_path = get_wallet_path(node_id)
+    wallet_path = get_wallet_path(user_id)
     key_metadata = crypto.prepare_key_metadata(password)
     os.makedirs(wallet_path, exist_ok=True)
-    metadata_path = get_metadata_path(node_id)
+    metadata_path = get_metadata_path(user_id)
     with open(metadata_path, 'w') as file:
         file.write(key_metadata)
-    unlock(node_id, password)
-    logger.info(f'Wallet for node {node_id} created successfully.')
+    unlock(user_id, password)
+    logger.info(f'Wallet for user {user_id} created successfully.')
 
 
-def unlock(node_id, password):
+def unlock(user_id, password):
     """
-    Odblokowuje portfel dla danego węzła.
+    Unlocks the wallet for the given user.
     """
     global master_keys
-    metadata_path = get_metadata_path(node_id)
+    metadata_path = get_metadata_path(user_id)
     if not os.path.exists(metadata_path):
-        raise CommonException(f"Wallet for node {node_id} does not exist.")
+        raise CommonException(f"Wallet for user {user_id} does not exist.")
     with open(metadata_path, 'r') as file:
         key_metadata = file.readline()
-    master_keys[node_id] = crypto.derive_valid_key(password, key_metadata)
-    logger.info(f'Wallet for node {node_id} unlocked successfully.')
+    master_keys[user_id] = crypto.derive_valid_key(password, key_metadata)
+    logger.info(f'Wallet for user {user_id} unlocked successfully.')
 
 
-def create_identity(node_id, name):
+def create_identity(user_id, name):
     """
-    Tworzy nową tożsamość w portfelu dla danego węzła.
-    Automatycznie generuje klucz prywatny i publiczny, zapisując oba.
+    Creates a new identity in the wallet for the given user.
+    Automatically generates a private and public key pair, saving both.
     """
-    wallet_path = get_wallet_path(node_id)
-    if node_id not in master_keys:
-        raise ValueError(f"Wallet for node {node_id} is not unlocked. Please unlock it first.")
+    wallet_path = get_wallet_path(user_id)
+    if user_id not in master_keys:
+        raise ValueError(f"Wallet for user {user_id} is not unlocked. Please unlock it first.")
 
-    # Generowanie pary kluczy
-    private_key, public_key = crypto.generate_keys(master_keys[node_id])
+    # Generate key pair
+    private_key, public_key = crypto.generate_keys(master_keys[user_id])
     identity_file_name = os.path.join(wallet_path, f"{name}.pem")
     identity_public_file_name = os.path.join(wallet_path, f"{name}_public.pem")
 
-    # Sprawdzenie, czy tożsamość już istnieje
+    # Check if identity already exists
     if os.path.exists(identity_file_name):
-        logger.warn(f'Identity {name} already exists for node {node_id}.')
+        logger.warn(f'Identity {name} already exists for user {user_id}.')
         raise CommonException()
 
-    # Zapis klucza prywatnego
+    # Save private key
     with open(identity_file_name, 'wb') as file:
         file.write(private_key)
 
-    # Zapis klucza publicznego
+    # Save public key
     with open(identity_public_file_name, 'wb') as public_file:
         public_file.write(public_key)
 
-    logger.info(f'Identity {name} created successfully for node {node_id}.')
+    logger.info(f'Identity {name} created successfully for user {user_id}.')
     return True
 
 
-def get_identities(node_id):
+def get_identities(user_id):
     """
-    Pobiera wszystkie tożsamości dla danego węzła.
+    Retrieves all identities for the given user, ensuring both private and public key files exist.
     """
-    wallet_path = get_wallet_path(node_id)
+    wallet_path = get_wallet_path(user_id)
     if not os.path.exists(wallet_path):
-        raise CommonException(f"Wallet for node {node_id} does not exist.")
+        raise CommonException(f"Wallet for user {user_id} does not exist.")
+
     directory = Path(wallet_path)
-    return [file.stem for file in directory.glob('*.pem')]
+    identities = []
+
+    for private_key_file in directory.glob('*.pem'):
+        if not private_key_file.name.endswith('_public.pem'):
+            identity_name = private_key_file.stem
+            public_key_file = directory / f"{identity_name}_public.pem"
+            if public_key_file.exists():
+                identities.append(identity_name)
+
+    return identities
 
 
-def get_private_key(node_id, identity_name, password):
-
-    wallet_path = get_wallet_path(node_id)
+def get_private_key(user_id, identity_name, password):
+    """
+    Retrieves the private key for a user's identity, decrypted with the password.
+    """
+    wallet_path = get_wallet_path(user_id)
     identity_file_name = os.path.join(wallet_path, f"{identity_name}.pem")
-    salt_file_name = os.path.join(wallet_path, "metadata.txt")
+    salt_file_name = get_metadata_path(user_id)
     if not os.path.exists(identity_file_name):
-        raise FileNotFoundError(f"Private key for identity {identity_name} does not exist for node {node_id}.")
+        raise FileNotFoundError(f"Private key for identity {identity_name} does not exist for user {user_id}.")
     with open(salt_file_name, 'r') as file:
         line = file.readline()
         salt = line.split(':')[0]
@@ -117,16 +127,24 @@ def get_private_key(node_id, identity_name, password):
 
     return crypto.restore_key(encrypted_key, password, salt)
 
-def get_public_key(node_id, identity_name):
-    wallet_path = get_wallet_path(node_id)
+
+def get_public_key(user_id, identity_name):
+    """
+    Retrieves the public key for a user's identity.
+    """
+    wallet_path = get_wallet_path(user_id)
     identity_public_file_name = os.path.join(wallet_path, f"{identity_name}_public.pem")
     if not os.path.exists(identity_public_file_name):
-        raise FileNotFoundError(f"Public key for identity {identity_name} does not exist for node {node_id}.")
+        raise FileNotFoundError(f"Public key for identity {identity_name} does not exist for user {user_id}.")
     with open(identity_public_file_name, 'rb') as file:
         return file.read()
 
-def generate_address(node_id, identity_name):
-    public_key_bytes = get_public_key(node_id, identity_name)
+
+def generate_address(user_id, identity_name):
+    """
+    Generates a SHA256 address for a user's identity based on the public key.
+    """
+    public_key_bytes = get_public_key(user_id, identity_name)
     from Crypto.PublicKey import RSA
     from Crypto.Hash import SHA256
     rsa_key = RSA.import_key(public_key_bytes)

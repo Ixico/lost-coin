@@ -1,4 +1,5 @@
 # Custom Cryptocurrency Implementation
+> **Note**: This project is currently under development.
 
 This project is a Python-based implementation of a custom cryptocurrency, designed to operate within a distributed network. It uses a **proof-of-work** consensus mechanism to validate transactions and secure the network. 
 ## About
@@ -23,5 +24,10 @@ In the second milestone we've introduced block creation mechanism. Blocks are cr
 2. Reaching consensus (proof-of-work method)
 3. Validation of transactions for double-spending
 4. Calculation of current account balances
-> **Note**: This project is currently under development.
->
+
+
+
+### Approach of transaction validation
+1. Ensures transactions are valid at every stage: broadcasting, queuing, and mining.
+2. Reduces risk of wasting computational resources on invalid transactions.
+3. Maintains consistency and trust across the network.

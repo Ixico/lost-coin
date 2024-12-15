@@ -9,15 +9,12 @@ BLOCKS = [{
     'previous_hash': 64 * '0',
     'content': [{
         "id": None,
-        "type": "coinbase",
         "inputs": [],
-        "outputs": [{"address": "b5a83945ed36e72cda3a3f26357bd17bfa78b0a79dee0ad95b32b52241008ad7", "amount": 100}],
-        "date": int(datetime(2024, 11, 1, 0, 0, 0).timestamp() * 1000),
-        "block_index": 0,
+        "outputs": [{"address": "b95226e8fe7ca8163ee5c7acc5cb3d53d3b41bb14ef1a9b7d30f0d9c264f8e4e", "amount": 100}],
         "signature": None
     }],
     'date': int(datetime(2024, 11, 1, 0, 0, 0).timestamp() * 1000),
-    'nonce': '73884'
+    'nonce': '5342492'
 }]
 MINE_PADDING = 4
 # todo: scale difficulty over time?
@@ -85,13 +82,13 @@ def hash_block(block):
 
 
 
-def create_new_block(transactions):
-    if not transactions:
+def create_new_block(transaction):
+    if not transaction:
         raise ValueError("Transaction list cannot be empty.")
 
     new_block = {
         "previous_hash": get_last_block_hash(),
-        "content": transactions,
+        "content": transaction,
         "date": int(datetime.now().timestamp() * 1000),
         "nonce": None  # Ustawione podczas mining
     }
