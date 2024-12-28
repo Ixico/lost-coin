@@ -1,12 +1,13 @@
 import hashlib
 import datetime
 import json
-
+from common import logger
 from Crypto.PublicKey import RSA
 
 from wallet import get_private_key, get_public_key
 from Crypto.Signature import pkcs1_15
 from Crypto.Hash import SHA256
+
 
 def calculate_transaction_hash(transaction):
     """
@@ -23,6 +24,7 @@ def calculate_transaction_hash(transaction):
     tx_string = json.dumps(tx_copy, sort_keys=True).encode()
     return hashlib.sha256(tx_string).hexdigest()
 
+'''
 def select_inputs(address, required_amount):
     """
     Selects UTXOs to satisfy the required amount.
@@ -69,37 +71,37 @@ def is_output_spent(tx_id, output_index):
                     return True
     return False
 
-def create_transfer_transaction(user_id, identity_name, recipient, amount, inputs, password):
+'''
+def create_transfer_transaction(sender_address, recipient_address, amount, user_id, identity_name, password):
     """
-    Creates a transfer transaction with the full public key included.
+        Creates a transfer transaction with the simplified structure.
 
-    Args:
-        user_id (str): User ID of the sender.
-        identity_name (str): Identity name of the sender.
-        recipient (str): Address of the recipient.
-        amount (float): Amount to send.
-        inputs (list): List of transaction inputs.
-        password (str): Password to unlock the private key.
+        Args:
+            user_id (str): User ID of the sender.
+            identity_name (str): Identity name of the sender.
+            recipient_address (str): Address of the recipient.
+            amount (float): Amount to send.
+            password (str): Password to unlock the private key.
 
-    Returns:
-        dict: Transaction in JSON format.
-    """
+        Returns:
+            dict: Transaction in JSON format.
+        """
     # Load the private and public keys
     private_key = get_private_key(user_id, identity_name, password)
     public_key = get_public_key(user_id, identity_name)
 
     transaction = {
-        "id": None,
-        "inputs": inputs,
-        "outputs": [{"address": recipient, "amount": amount}],
-        "public_key": public_key.hex(),  # Include full public key
+        "sender_address": sender_address,
+        "recipient_address": recipient_address,
+        "amount": amount,
+        "public_key": public_key.hex(),
         "signature": None
     }
 
     # Generate transaction ID
-    transaction_json = json.dumps(transaction, sort_keys=True).encode("utf-8")
-    transaction["id"] = hashlib.sha256(transaction_json).hexdigest()
-    transaction.pop("signature")
+    transaction_copy = transaction.copy()
+    transaction_copy.pop("signature")
+    transaction_json = json.dumps(transaction_copy, sort_keys=True).encode("utf-8")
     # Sign the transaction
     transaction_hash = SHA256.new(transaction_json)
     try:
@@ -112,6 +114,7 @@ def create_transfer_transaction(user_id, identity_name, recipient, amount, input
     # Step 5: Verify the signature (Optional, to debug)
     try:
         print(transaction_json.decode())
+        logger.debug(f"Transaction hash: {transaction_hash.hexdigest()}")
         pkcs1_15.new(RSA.import_key(public_key)).verify(transaction_hash, signature)
         print("[DEBUG] Signature verified successfully.")
     except Exception as e:

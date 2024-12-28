@@ -64,6 +64,6 @@ def start_mining():
         except IndexError:
             # The queue is empty
             logger.debug("No transactions to mine, waiting...")
-            time.sleep(1)
+            time.sleep(10)
         except Exception as e:
             logger.error(f"Error during mining: {e}")

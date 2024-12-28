@@ -32,14 +32,19 @@ def validate_transaction(transaction):
         logger.debug(f"Decoded public key: {public_key.export_key().decode()}")
 
         # Step 2: Remove 'signature' field for hash computation
-        signature_hex = transaction.pop("signature")
+        transaction_copy = transaction.copy()
+        signature_hex = transaction_copy.pop("signature")
+
         if not signature_hex:
             logger.error("Transaction validation failed: Missing signature.")
             return False
         signature = bytes.fromhex(signature_hex)
 
+        logger.debug(f"Signature: {signature_hex}")
+
         # Step 3: Recreate the transaction hash
-        transaction_json = json.dumps(transaction, sort_keys=True).encode("utf-8")
+        transaction_json = json.dumps(transaction_copy, sort_keys=True).encode("utf-8")
+
         transaction_hash = SHA256.new(transaction_json)
 
         logger.debug(f"Recreated transaction JSON: {transaction_json.decode()}")
@@ -78,7 +83,7 @@ def handler(data, message_type):
     if message_type == 'block':
         block.add_if_valid(data)
 
-def create_transaction(sender, recipient, amount, user_id, identity_name, password):
+def create_transaction(sender_address, recipient_address, amount, user_id, identity_name, password):
     """
     Creates a transaction, signs it, and broadcasts it to the network.
 
@@ -94,15 +99,16 @@ def create_transaction(sender, recipient, amount, user_id, identity_name, passwo
         dict: Signed transaction in JSON format.
     """
     # Select transaction inputs (UTXOs)
+    '''
     inputs = transaction.select_inputs(sender, amount)
-
+    '''
     # Create the transaction
     transaction_data = transaction.create_transfer_transaction(
+        sender_address=sender_address,
+        recipient_address=recipient_address,
+        amount=amount,
         user_id=user_id,
         identity_name=identity_name,
-        recipient=recipient,
-        amount=amount,
-        inputs=inputs,
         password=password
     )
 

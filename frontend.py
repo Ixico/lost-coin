@@ -118,20 +118,20 @@ def blockchain_view(user_id, identity_name, password, sender_address):
         if event == sg.WINDOW_CLOSED or event == "Exit":
             break
         elif event == "Publish Transaction":
-            recipient = sg.popup_get_text("Enter recipient's SHA256 address:")
+            recipient_address = sg.popup_get_text("Enter recipient's SHA256 address:")
             amount = sg.popup_get_text("Enter amount to send:")
-            if recipient and amount:
+            if recipient_address and amount:
                 try:
                     amount = float(amount)
-                    transaction_data = node.create_transaction(
-                        sender=sender_address,
-                        recipient=recipient,
+                    node.create_transaction(
+                        sender_address=sender_address,
+                        recipient_address=recipient_address,
                         amount=amount,
                         user_id=user_id,
                         identity_name=identity_name,
                         password=password
                     )
-                    sg.popup(f"Transaction created and added to mining queue!\nTransaction ID: {transaction_data['id']}")
+                    sg.popup("Transaction created and added to mining queue!")
                 except Exception as e:
                     sg.popup(f"Error creating transaction: {str(e)}")
         elif event == "Refresh Balance":

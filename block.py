@@ -8,15 +8,16 @@ from crypto import hash
 BLOCKS = [{
     'previous_hash': 64 * '0',
     'content': [{
-        "id": None,
-        "inputs": [],
-        "outputs": [{"address": "b95226e8fe7ca8163ee5c7acc5cb3d53d3b41bb14ef1a9b7d30f0d9c264f8e4e", "amount": 100}],
+        "sender_address": None,
+        "recipient_address": 'b95226e8fe7ca8163ee5c7acc5cb3d53d3b41bb14ef1a9b7d30f0d9c264f8e4e',
+        "amount": 100,
+        "public_key": None,
         "signature": None
     }],
     'date': int(datetime(2024, 11, 1, 0, 0, 0).timestamp() * 1000),
-    'nonce': '5342492'
+    'nonce': '7667139'
 }]
-MINE_PADDING = 4
+MINE_PADDING = 6
 # todo: scale difficulty over time?
 
 def get_last_block_hash():
@@ -38,13 +39,11 @@ def add_if_valid(block):
     if not is_valid(block):
         logger.error(f"Block is not valid: {block}")
         return
-
     # Walidacja transakcji w bloku
-    for tx in block['content']:
+    '''for tx in block['content']:
         if not isinstance(tx, dict) or 'id' not in tx or 'outputs' not in tx:
             logger.error(f"Invalid transaction in block: {tx}")
-            return
-
+            return'''
     logger.debug(f"Adding block to chain: {block}")
     BLOCKS.append(block)
 
