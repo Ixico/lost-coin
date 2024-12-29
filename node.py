@@ -1,6 +1,7 @@
 import threading
 import json
 import block
+from block import BLOCKS
 import communication
 import miner
 import transaction
@@ -21,6 +22,17 @@ def validate_transaction(transaction):
         bool: True if the transaction is valid, False otherwise.
     """
     try:
+
+        if any(tx['id'] == transaction['id'] for tx in miner.TRANSACTIONS):
+            logger.error("Duplicate transaction ID in mempool.")
+            return False
+
+            # Check for duplicate transaction ID in blockchain
+        for block in BLOCKS:
+            if any(tx['id'] == transaction['id'] for tx in block['content']):
+                logger.error("Duplicate transaction ID in blockchain.")
+                return False
+
         # Step 1: Extract public key
         public_key_hex = transaction.get("public_key")
         if not public_key_hex:
@@ -44,11 +56,10 @@ def validate_transaction(transaction):
 
         # Step 3: Recreate the transaction hash
         transaction_json = json.dumps(transaction_copy, sort_keys=True).encode("utf-8")
-
         transaction_hash = SHA256.new(transaction_json)
 
-        logger.debug(f"Recreated transaction JSON: {transaction_json.decode()}")
-        logger.debug(f"Recreated transaction hash: {transaction_hash.hexdigest()}")
+        #ogger.debug(f"Recreated transaction JSON: {transaction_json.decode()}")
+        #logger.debug(f"Recreated transaction hash: {transaction_hash.hexdigest()}")
 
         # Step 4: Verify the signature
         pkcs1_15.new(public_key).verify(transaction_hash, signature)
@@ -98,10 +109,6 @@ def create_transaction(sender_address, recipient_address, amount, user_id, ident
     Returns:
         dict: Signed transaction in JSON format.
     """
-    # Select transaction inputs (UTXOs)
-    '''
-    inputs = transaction.select_inputs(sender, amount)
-    '''
     # Create the transaction
     transaction_data = transaction.create_transfer_transaction(
         sender_address=sender_address,

@@ -135,9 +135,11 @@ def blockchain_view(user_id, identity_name, password, sender_address):
                 except Exception as e:
                     sg.popup(f"Error creating transaction: {str(e)}")
         elif event == "Refresh Balance":
-            balances = block.calculate_balances()
-            balance = balances.get(sender_address, 0)
-            window["user_balance"].update(str(balance))
+            try:
+                balance = block.get_balance_for_address(sender_address)
+                window["user_balance"].update(str(balance))
+            except Exception as e:
+                sg.popup(f"Error refreshing balance: {str(e)}")
         window["block_list"].update(values=block.get_blocks_content())
     window.close()
 

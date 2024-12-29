@@ -8,6 +8,7 @@ from crypto import hash
 BLOCKS = [{
     'previous_hash': 64 * '0',
     'content': [{
+        "id": "1",
         "sender_address": None,
         "recipient_address": 'b95226e8fe7ca8163ee5c7acc5cb3d53d3b41bb14ef1a9b7d30f0d9c264f8e4e',
         "amount": 100,
@@ -15,7 +16,7 @@ BLOCKS = [{
         "signature": None
     }],
     'date': int(datetime(2024, 11, 1, 0, 0, 0).timestamp() * 1000),
-    'nonce': '7667139'
+    'nonce': '21179738'
 }]
 MINE_PADDING = 6
 # todo: scale difficulty over time?
@@ -39,11 +40,6 @@ def add_if_valid(block):
     if not is_valid(block):
         logger.error(f"Block is not valid: {block}")
         return
-    # Walidacja transakcji w bloku
-    '''for tx in block['content']:
-        if not isinstance(tx, dict) or 'id' not in tx or 'outputs' not in tx:
-            logger.error(f"Invalid transaction in block: {tx}")
-            return'''
     logger.debug(f"Adding block to chain: {block}")
     BLOCKS.append(block)
 
@@ -95,29 +91,42 @@ def create_new_block(transaction):
 
 def calculate_balances():
     """
-    Oblicza aktualne saldo każdego użytkownika na podstawie wszystkich transakcji w blockchainie.
+    Calculate balances for all addresses based on the blockchain content.
 
     Returns:
-        dict: Mapa adresów użytkowników do ich sald.
+        dict: A dictionary mapping addresses to their balances.
     """
     balances = {}
-    for block in BLOCKS:
-        for tx in block['content']:
-            # Process outputs: Credit to recipient's address
-            for output in tx.get('outputs', []):
-                address = output["address"]
-                amount = output["amount"]
-                if address in balances:
-                    balances[address] += amount
-                else:
-                    balances[address] = amount
 
-            # Process inputs: Debit from sender's address
-            for input_tx in tx.get('inputs', []):
-                sender_address = input_tx.get("id")  # Sender's address stored in 'id'
-                amount = input_tx.get("amount", 0)
-                if sender_address in balances:
-                    balances[sender_address] -= amount
-                else:
-                    balances[sender_address] = -amount
+    # Retrieve all block contents
+    all_block_contents = get_blocks_content()
+
+    # Iterate through each block's content
+    for block_content in all_block_contents:
+        for transaction in block_content:
+            sender = transaction.get("sender_address")
+            recipient = transaction.get("recipient_address")
+            amount = float(transaction.get("amount", 0))
+
+            # Deduct amount from sender's balance
+            if sender:
+                balances[sender] = balances.get(sender, 0) - amount
+
+            # Add amount to recipient's balance
+            if recipient:
+                balances[recipient] = balances.get(recipient, 0) + amount
+
     return balances
+
+def get_balance_for_address(address):
+    """
+    Get the balance of a specific address.
+
+    Args:
+        address (str): The address to check.
+
+    Returns:
+        float: The balance of the given address.
+    """
+    balances = calculate_balances()
+    return balances.get(address, 0)

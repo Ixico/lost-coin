@@ -1,5 +1,7 @@
 import hashlib
 import datetime
+import os
+import sys
 import json
 from common import logger
 from Crypto.PublicKey import RSA
@@ -8,6 +10,18 @@ from wallet import get_private_key, get_public_key
 from Crypto.Signature import pkcs1_15
 from Crypto.Hash import SHA256
 
+cur_path = os.path.dirname(__file__)
+
+file_name = os.path.join(cur_path, 'resources\\transaction_id.txt')
+def generate_transaction_id():
+    with open(file_name, "r+") as file:
+        current_id = int(file.read().strip())
+        new_id = current_id + 1
+        file.seek(0)
+        file.write(str(new_id))
+        file.truncate()
+
+    return str(new_id)
 
 def calculate_transaction_hash(transaction):
     """
@@ -24,63 +38,16 @@ def calculate_transaction_hash(transaction):
     tx_string = json.dumps(tx_copy, sort_keys=True).encode()
     return hashlib.sha256(tx_string).hexdigest()
 
-'''
-def select_inputs(address, required_amount):
-    """
-    Selects UTXOs to satisfy the required amount.
-    """
-    from block import BLOCKS
-    utxos = []
-    selected_inputs = []
-    total_amount = 0
-
-    for block in BLOCKS:
-        for tx in block.get('content', []):
-            for output_index, output in enumerate(tx['outputs']):
-                if output['address'] == address and not is_output_spent(tx['id'], output_index):
-                    utxos.append({
-                        'id': tx['id'],
-                        'amount': output['amount'],
-                        'output_index': output_index
-                    })
-
-    for utxo in utxos:
-        selected_inputs.append({
-            'id': utxo['id'],
-            'amount': utxo['amount'],
-            'output_index': utxo['output_index']
-        })
-        total_amount += utxo['amount']
-        if total_amount >= required_amount:
-            break
-
-    if total_amount < required_amount:
-        raise ValueError(f"Insufficient funds. Required: {required_amount}, Available: {total_amount}")
-
-    return selected_inputs
-
-def is_output_spent(tx_id, output_index):
-    """
-    Checks if a UTXO is already spent.
-    """
-    from block import BLOCKS
-    for block in BLOCKS:
-        for tx in block.get('content', []):
-            for tx_input in tx.get('inputs', []):
-                if tx_input['id'] == tx_id and tx_input['output_index'] == output_index:
-                    return True
-    return False
-
-'''
 def create_transfer_transaction(sender_address, recipient_address, amount, user_id, identity_name, password):
     """
         Creates a transfer transaction with the simplified structure.
 
         Args:
-            user_id (str): User ID of the sender.
-            identity_name (str): Identity name of the sender.
+            sender_address (str): sender_address of the sender.
             recipient_address (str): Address of the recipient.
             amount (float): Amount to send.
+            user_id (str): User ID of the sender, to unlock the wallet.
+            identity_name (str): Identity name of the sender.
             password (str): Password to unlock the private key.
 
         Returns:
@@ -90,7 +57,12 @@ def create_transfer_transaction(sender_address, recipient_address, amount, user_
     private_key = get_private_key(user_id, identity_name, password)
     public_key = get_public_key(user_id, identity_name)
 
+    # Generate a unique ID (incremental)
+    #todo: consider using a timestamp instead
+    transaction_id = generate_transaction_id()
+
     transaction = {
+        "id": transaction_id,
         "sender_address": sender_address,
         "recipient_address": recipient_address,
         "amount": amount,
