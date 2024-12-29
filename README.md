@@ -28,6 +28,10 @@ In the second milestone we've introduced block creation mechanism. Blocks are cr
 
 
 ### Approach of transaction validation
-1. Ensures transactions are valid at every stage: broadcasting, queuing, and mining.
-2. Reduces risk of wasting computational resources on invalid transactions.
-3. Maintains consistency and trust across the network.
+1. Transaction have to be signed by the sender, then signature is verified by the public key by the recipent
+2. Id field is needed to provide uniqueness of the transaction, 
+### To do
+
+1. Think about the better way to store and gather id, maybe from the previous block
+2. Mechanism to prevent double spending is needed
+3. Proof of work method, to reach consensus
