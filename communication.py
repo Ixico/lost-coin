@@ -14,6 +14,10 @@ HANDLER_FUNCTION = lambda x, y: None
 
 
 def handle_client(conn, node):
+    """
+    Obsługuje połączenie z klientem, przetwarzając odbierane wiadomości JSON.
+    """
+    buffer = ""
     with conn:
         conn.settimeout(2)
         while not STOP_EVENT.is_set():
@@ -23,24 +27,38 @@ def handle_client(conn, node):
                 data = None
             except socket.timeout:
                 continue
+
             if not data:
                 logger.warn(f'Node {node} disconnected.')
                 delete_node(node)
                 break
-            data = data.decode('utf-8')
-            message_digest = hash(data)
-            data = json.loads(data)
-            if TYPE_METADATA_FIELD not in data:
-                logger.warn(f'Dropping data as it does not contain message type: {data}')
-                continue
-            if message_digest in RECEIVED_MESSAGES:
-                logger.debug(f'Skipping message {data} since it already has been received.')
-                continue
-            RECEIVED_MESSAGES.append(message_digest)
-            logger.debug(f'Received data from node {node}: {data}')
-            message_type = data.pop(TYPE_METADATA_FIELD)
-            broadcast(data, message_type, node)
-            HANDLER_FUNCTION(data, message_type)
+
+            buffer += data.decode('utf-8')
+
+            # Przetwarzanie pełnych wiadomości z bufora
+            while "\n" in buffer:
+                message, buffer = buffer.split("\n", 1)
+                try:
+                    message_digest = hash(message)
+                    data = json.loads(message)
+
+                    if TYPE_METADATA_FIELD not in data:
+                        logger.warn(f'Dropping data as it does not contain message type: {data}')
+                        continue
+
+                    if message_digest in RECEIVED_MESSAGES:
+                        logger.debug(f'Skipping message {data} since it already has been received.')
+                        continue
+
+                    RECEIVED_MESSAGES.append(message_digest)
+                    logger.debug(f'Received data from node {node}: {data}')
+                    message_type = data.pop(TYPE_METADATA_FIELD)
+                    broadcast(data, message_type, node)
+                    HANDLER_FUNCTION(data, message_type)
+
+                except json.JSONDecodeError as e:
+                    logger.error(f"Error decoding JSON from node {node}: {e}")
+
 
 
 def listen(port):
@@ -72,19 +90,16 @@ def connect(port):
         shutdown()
 
 
-# todo: refactor this (data_type might be required now)
 def broadcast(data_dict: dict, data_type, omit_node=None):
     data = data_dict.copy()
     data[TYPE_METADATA_FIELD] = data_type
-    # todo: log omit_node
-    logger.debug(f'Broadcasting to connections {list(CONNECTIONS.keys())} data: {data}')
+    message = json.dumps(data) + "\n"  # Dodanie separatora
     logger.debug(f'Broadcasting to connections {list(CONNECTIONS.keys())} data: {data}, omitting node: {omit_node}')
-    send_and_delete_inactive(data, omit_node)
+    send_and_delete_inactive(message, omit_node)
 
 
-def send_and_delete_inactive(message: dict, omit_node=None):
+def send_and_delete_inactive(message: str, omit_node=None):
     inactive_nodes = []
-    message = json.dumps(message)
     RECEIVED_MESSAGES.append(hash(message))
     message = message.encode('utf-8')
     for node, conn in CONNECTIONS.items():

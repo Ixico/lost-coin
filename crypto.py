@@ -36,16 +36,23 @@ def derive_valid_key(password: str, key_metadata: str):
 def calculate_pbkdf2(password: str, salt: bytes):
     return PBKDF2(password, salt, 32, count=1000000, hmac_hash_module=SHA256)
 
+def restore_key(encrypted_key, password, salt):
+    master_key = calculate_pbkdf2(password, salt).hex()
+    master_key = base64.b64encode(bytes.fromhex(master_key)).decode('utf-8')
+    return RSA.import_key(encrypted_key, master_key)
 
 def generate_keys(master_key):
     key = RSA.generate(2048)
     master_key = base64.b64encode(bytes.fromhex(master_key)).decode('utf-8')
-    return key.export_key(
+    private_key = key.export_key(
         passphrase=master_key,
         pkcs=8,
         protection='PBKDF2WithHMAC-SHA256AndAES256-CBC',
         prot_params={'iteration_count': 1000}
     )
+    public_key = key.public_key().export_key(format='PEM')
+
+    return private_key, public_key
 
 
 def hash(data: str):

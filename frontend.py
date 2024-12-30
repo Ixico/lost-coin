@@ -1,36 +1,155 @@
 import signal
-
+import threading
 import PySimpleGUI as sg
-
 import block
 import miner
 import node
+import wallet
 from common import STOP_EVENT, shutdown, handle_sigint
 
 
-def create_connect_view():
-    return [
-        [sg.Text("Port:"), sg.InputText(key="port", size=(20, 1))],
-        [sg.Text("Registration Port:"), sg.InputText(key="registration_port", size=(20, 1))],
-        [sg.Checkbox("Miner", key="miner")],
-        [sg.Button("Connect", key="connect")]
+def connect_view():
+    """
+    Widok dla konfiguracji połączenia węzła z obsługą trybu minera.
+    """
+    layout = [
+        [sg.Text("Enter the port to host this node:"), sg.InputText(key="port", size=(20, 1))],
+        [sg.Text("Enter the registration port (optional):"), sg.InputText(key="registration_port", size=(20, 1))],
+        [sg.Checkbox("Enable Miner Mode", key="miner")],
+        [sg.Button("Connect"), sg.Button("Exit")]
     ]
+    window = sg.Window("Node Connection Setup", layout)
+
+    while not STOP_EVENT.is_set():
+        event, values = window.read(timeout=100)
+        if event == sg.WINDOW_CLOSED or event == "Exit":
+            shutdown()
+            break
+        elif event == "Connect":
+            port = values["port"]
+            registration_port = values["registration_port"]
+            is_miner = values["miner"]
+
+            if not port:
+                sg.popup("Port is required to start the node.")
+                continue
+
+            window.close()
+            return port, registration_port, is_miner
+    window.close()
+    return None
 
 
-def create_blockchain_view():
-    return [
+
+def setup_wallet():
+    """
+    Setup wallet: asks for user_id and password, and chooses or creates an identity.
+    """
+    layout = [
+        [sg.Text("Enter your user ID:"), sg.InputText(key="user_id", size=(30, 1))],
+        [sg.Text("Enter your password:"), sg.InputText(key="password", password_char="*", size=(30, 1))],
+        [sg.Button("Submit"), sg.Button("Exit")]
+    ]
+    window = sg.Window("Wallet Setup", layout)
+
+    while not STOP_EVENT.is_set():
+        event, values = window.read(timeout=100)
+        if event == sg.WINDOW_CLOSED or event == "Exit":
+            shutdown()
+            return None
+        elif event == "Submit":
+            user_id = values["user_id"]
+            password = values["password"]
+            if not user_id or not password:
+                sg.popup("User ID and password are required.")
+                continue
+
+            try:
+                if wallet.exists(user_id):
+                    wallet.unlock(user_id, password)
+                    sg.popup(f"Wallet for user {user_id} unlocked successfully.")
+                else:
+                    wallet.create(user_id, password)
+                    sg.popup(f"New wallet for user {user_id} created successfully.")
+
+                # Choose or create identity
+                identities = wallet.get_identities(user_id)
+                if identities:
+                    identity_name = sg.popup_get_text(
+                        "Available identities:\n" + "\n".join(identities) +
+                        "\n\nEnter identity name to use or create a new one:"
+                    )
+                else:
+                    identity_name = sg.popup_get_text("No identities found.\nEnter name to create a new identity:")
+
+                if identity_name and identity_name not in identities:
+                    wallet.create_identity(user_id, identity_name)
+                    sg.popup(f"Identity {identity_name} created successfully.")
+
+                if not identity_name:
+                    sg.popup("No identity selected or created.")
+                    return None
+
+                sender_address = wallet.generate_address(user_id, identity_name)
+
+                window.close()
+                return user_id, identity_name, password, sender_address
+            except Exception as e:
+                sg.popup(f"Error: {str(e)}")
+    return None
+
+
+def blockchain_view(user_id, identity_name, password, sender_address):
+    """
+    Blockchain view showing user_id and user's address.
+    """
+    layout = [
+        [sg.Text(f"User ID: {user_id}, Identity: {identity_name}")],
+        [sg.Text("Your Address (SHA256):"), sg.InputText(sender_address, key="user_address", readonly=True)],
+        [sg.Text("Your Balance:"), sg.Text("0", key="user_balance")],
         [sg.Text("Blockchain:")],
-        [sg.Listbox(values=[], size=(40, 10), key="block_list", select_mode=sg.LISTBOX_SELECT_MODE_SINGLE, enable_events=True)],
-        [sg.Button("Publish New Transaction", key="publish_new_transaction")]
+        [sg.Listbox(values=[], size=(60, 10), key="block_list", select_mode=sg.LISTBOX_SELECT_MODE_SINGLE, enable_events=True)],
+        [sg.Button("Publish Transaction"), sg.Button("Refresh Balance"), sg.Button("Exit")]
     ]
+    window = sg.Window("Blockchain Node", layout)
+
+    while not STOP_EVENT.is_set():
+        event, values = window.read(timeout=100)
+        if event == sg.WINDOW_CLOSED or event == "Exit":
+            break
+        elif event == "Publish Transaction":
+            recipient_address = sg.popup_get_text("Enter recipient's SHA256 address:")
+            amount = sg.popup_get_text("Enter amount to send:")
+            if recipient_address and amount:
+                try:
+                    amount = float(amount)
+                    node.create_transaction(
+                        sender_address=sender_address,
+                        recipient_address=recipient_address,
+                        amount=amount,
+                        user_id=user_id,
+                        identity_name=identity_name,
+                        password=password
+                    )
+                    sg.popup("Transaction created and added to mining queue!")
+                except Exception as e:
+                    sg.popup(f"Error creating transaction: {str(e)}")
+        elif event == "Refresh Balance":
+            try:
+                balance = block.get_balance_for_address(sender_address)
+                window["user_balance"].update(str(balance))
+            except Exception as e:
+                sg.popup(f"Error refreshing balance: {str(e)}")
+        window["block_list"].update(values=block.get_blocks_content())
+    window.close()
 
 
-def create_mining_view():
-    return [
+def mining_view():
+    layout = [
         [sg.Text("Mining Queue:")],
         [sg.Listbox(
             values=[],
-            size=(40, 10),
+            size=(60, 10),
             key="mining_queue",
             select_mode=sg.LISTBOX_SELECT_MODE_SINGLE,
             enable_events=False,
@@ -38,49 +157,6 @@ def create_mining_view():
             highlight_text_color='black'
         )],
     ]
-
-
-def connect_view():
-    layout = create_connect_view()
-    window = sg.Window("Connect to Network", layout)
-    while not STOP_EVENT.is_set():
-        event, values = window.read(timeout=100)
-        if event == sg.WINDOW_CLOSED:
-            break
-        elif event == "connect":
-            port = values["port"]
-            registration_port = values["registration_port"]
-            is_miner = values["miner"]
-            window.close()
-            return port, registration_port, is_miner
-    window.close()
-
-
-def blockchain_view():
-    layout = create_blockchain_view()
-    window = sg.Window("Blockchain", layout)
-    while not STOP_EVENT.is_set():
-        event, values = window.read(timeout=100)
-        if event == sg.WINDOW_CLOSED:
-            break
-        elif event == "publish_new_transaction":
-            block_content = sg.popup_get_text("Enter content for the new transaction:", "New Transaction Content")
-            if block_content:
-                node.create_transaction(block_content)
-        elif event == "block_list":
-            selected_index = window["block_list"].get_indexes()[0]
-            show_block_details(selected_index)
-        window['block_list'].update(values=block.get_blocks_content())
-    window.close()
-
-
-def show_block_details(block_index):
-    block_detail = block.get_block_details(block_index)
-    sg.popup("Block Details", '\n\n'.join(f"{key}: {value}" for key, value in block_detail.items()))
-
-
-def mining_view():
-    layout = create_mining_view()
     window = sg.Window("Mining", layout)
     while not STOP_EVENT.is_set():
         event, values = window.read(timeout=100)
@@ -95,13 +171,31 @@ def to_int(x):
 
 
 signal.signal(signal.SIGINT, handle_sigint)
-params = connect_view()
-if params is None:
+
+
+# Step 1: Setup Wallet
+user_data = setup_wallet()
+if user_data is None:
     shutdown()
     exit()
-node.create(to_int(params[0]), to_int(params[1]), params[2])
-if params[2]:
+
+user_id, identity_name, password, sender_address = user_data
+
+# Step 2: Connect to Network
+connection_data = connect_view()
+if connection_data is None:
+    shutdown()
+    exit()
+
+port, registration_port, is_miner = connection_data
+node.create(int(port), int(registration_port) if registration_port else None, is_miner)
+
+# Step 3: Miner Mode
+if is_miner:
+    sg.popup(f"Starting miner mode for user {user_id}.")
+    threading.Thread(target=miner.start_mining).start()
     mining_view()
-else:
-    blockchain_view()
+
+# Step 4: Blockchain View
+blockchain_view(user_id, identity_name, password, sender_address)
 shutdown()

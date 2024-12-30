@@ -1,38 +1,69 @@
 from collections import deque
-import communication
-from common import STOP_EVENT, logger
-import block
+from datetime import datetime
 from Crypto.Random import get_random_bytes
+from common import STOP_EVENT, logger
+
+import block
 import time
+import json
+import communication
+import node
 
 TRANSACTIONS = deque()
 
 
 def get_content():
-    return [x['content'] for x in TRANSACTIONS]
+    """
+    Pobiera listę transakcji w kolejce minera.
+    """
+    try:
+        return [json.dumps(tx, indent=4) for tx in TRANSACTIONS]
+    except Exception as e:
+        logger.error(f"Error getting mining queue content: {e}")
+        return []
 
 
 def add(transaction):
-    logger.debug(f'Adding transaction to mine: {transaction}')
-    TRANSACTIONS.append(transaction)
+    """
+    Adds a transaction to the mining queue after validation.
+    """
+    if node.validate_transaction(transaction):
+        logger.debug(f'Adding valid transaction to mine: {transaction}')
+        TRANSACTIONS.append(transaction)
+    else:
+        logger.error(f"Invalid transaction rejected: {transaction}")
 
 
-# todo: enclosing multiple transactions into one block
 def start_mining():
     while not STOP_EVENT.is_set():
         try:
-            currently_mined = TRANSACTIONS[0]
-            currently_mined['previous_hash'] = block.get_last_block_hash()
-            logger.debug(f'Mining block {currently_mined}')
+            # Get the first transaction from the queue
+            currently_mined = TRANSACTIONS.popleft()
+            if not node.validate_transaction(currently_mined):
+                logger.error(f"Invalid transaction removed from mining queue: {currently_mined}")
+                continue  # Skip invalid transactions
+
+            logger.debug(f"Mining transaction: {currently_mined}")
+
+            # Create a block for mining
+            new_block = {
+                "previous_hash": block.get_last_block_hash(),
+                "content": [currently_mined],
+                "date": int(datetime.now().timestamp() * 1000),
+                "nonce": None
+            }
+
+            while not STOP_EVENT.is_set():
+                nonce = get_random_bytes(64).hex()
+                new_block['nonce'] = nonce
+                if block.is_mined(new_block):
+                    logger.info(f"Mined block successfully: {new_block}")
+                    block.add_if_valid(new_block)
+                    communication.broadcast(new_block, 'block')
+                    break
         except IndexError:
-            time.sleep(1)
-            continue
-        while not STOP_EVENT.is_set():
-            nonce = get_random_bytes(64).hex()
-            currently_mined['nonce'] = nonce
-            if block.is_mined(currently_mined):
-                logger.info(f'Mined block: {currently_mined}')
-                block.add_if_valid(currently_mined)
-                communication.broadcast(currently_mined, 'block')
-                TRANSACTIONS.popleft()
-                break
+            # The queue is empty
+            logger.debug("No transactions to mine, waiting...")
+            time.sleep(10)
+        except Exception as e:
+            logger.error(f"Error during mining: {e}")
