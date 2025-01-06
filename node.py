@@ -1,7 +1,6 @@
 import threading
 import json
 import block
-from block import BLOCKS
 import communication
 import miner
 import transaction
@@ -27,11 +26,11 @@ def validate_transaction(transaction):
             logger.error("Duplicate transaction ID in mempool.")
             return False
 
-            # Check for duplicate transaction ID in blockchain
-        for block in BLOCKS:
-            if any(tx['id'] == transaction['id'] for tx in block['content']):
-                logger.error("Duplicate transaction ID in blockchain.")
-                return False
+        # Check for duplicate transaction ID in blockchain
+
+        if block.is_in_blokchain_with_id(transaction['id']):
+            logger.error("Duplicate transaction ID in blockchain.")
+            return False
 
         # Step 1: Extract public key
         public_key_hex = transaction.get("public_key")

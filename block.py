@@ -1,52 +1,57 @@
 import hashlib
+import json
 from datetime import datetime
 
-import json
+from anytree import Node
+from anytree.search import findall, find
+
 from common import logger
 from crypto import hash
 
-BLOCKS = [{
+GENESIS = Node(name='genesis', body={
     'previous_hash': 64 * '0',
     'content': [{
         "id": "1",
         "sender_address": None,
-        "recipient_address": 'b95226e8fe7ca8163ee5c7acc5cb3d53d3b41bb14ef1a9b7d30f0d9c264f8e4e',
+        "recipient_address": 'c52155717762ff290836cb04895390ac69518c222c68554ccfd4a324a5cc4aed',
         "amount": 100,
         "public_key": None,
         "signature": None
     }],
     'date': int(datetime(2024, 11, 1, 0, 0, 0).timestamp() * 1000),
-    'nonce': '21179738'
-}]
+    'nonce': '866648'
+})
+
 MINE_PADDING = 6
 # todo: scale difficulty over time?
 
 def get_last_block_hash():
-    return hash_block(BLOCKS[-1])
+    leaves = findall(GENESIS, filter_=lambda node: node.is_leaf)
+    last_block = max(leaves, key=lambda node: node.depth).body
+    return hash_block(last_block)
+
+
+def is_in_blokchain_with_id(block_id):
+    return find(GENESIS, filter_=lambda node: node.body['content'][0]['id'] == block_id) is not None
+
 
 
 def get_blocks_content():
-    return [b['content'] for b in BLOCKS]
+    leaves = findall(GENESIS, filter_=lambda node: node.is_leaf)
+    last_block = max(leaves, key=lambda node: node.depth)
+    return [b.body['content'] for b in last_block.ancestors + (last_block,)]
 
-
-def get_block_details(i):
-    block_details = BLOCKS[i].copy()
-    block_details['hash'] = hash_block(block_details)
-    block_details['date'] = str(datetime.fromtimestamp(block_details['date'] / 1000))
-    return block_details
 
 def add_if_valid(block):
-    # todo: validate block contains all required fields
-    if not is_valid(block):
-        logger.error(f"Block is not valid: {block}")
+    if not is_mined(block):
+        logger.error(f"Block is not mined: {block}")
+        return
+    leaf = find(GENESIS, filter_=lambda node: hash_block(node.body) == block['previous_hash'])
+    if leaf is None:
+        logger.error(f"Block with hash {block['previous_hash']} not found in blokchain.")
         return
     logger.debug(f"Adding block to chain: {block}")
-    BLOCKS.append(block)
-
-
-# todo: allow forks
-def is_valid(block):
-    return block['previous_hash'] == hash_block(BLOCKS[-1]) and is_mined(block)
+    Node(name=hash_block(block), parent=leaf, body=block)
 
 
 def is_mined(block):
@@ -75,19 +80,6 @@ def hash_block(block):
         logger.error(f"Error hashing block: {e}")
         raise
 
-
-
-def create_new_block(transaction):
-    if not transaction:
-        raise ValueError("Transaction list cannot be empty.")
-
-    new_block = {
-        "previous_hash": get_last_block_hash(),
-        "content": transaction,
-        "date": int(datetime.now().timestamp() * 1000),
-        "nonce": None  # Ustawione podczas mining
-    }
-    return new_block
 
 def calculate_balances():
     """
