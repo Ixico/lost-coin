@@ -14,7 +14,6 @@ from Crypto.Hash import SHA256
 
 cur_path = os.path.dirname(__file__)
 
-file_name = os.path.join(cur_path, 'resources\\transaction_id.txt')
 def generate_transaction_id():
     return str(uuid.uuid4())
 
