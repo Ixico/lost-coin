@@ -3,8 +3,10 @@ import datetime
 import os
 import sys
 import json
+import uuid
 from common import logger
 from Crypto.PublicKey import RSA
+
 
 from wallet import get_private_key, get_public_key
 from Crypto.Signature import pkcs1_15
@@ -14,14 +16,7 @@ cur_path = os.path.dirname(__file__)
 
 file_name = os.path.join(cur_path, 'resources\\transaction_id.txt')
 def generate_transaction_id():
-    with open(file_name, "r+") as file:
-        current_id = int(file.read().strip())
-        new_id = current_id + 1
-        file.seek(0)
-        file.write(str(new_id))
-        file.truncate()
-
-    return str(new_id)
+    return str(uuid.uuid4())
 
 def calculate_transaction_hash(transaction):
     """
