@@ -8,6 +8,7 @@ import time
 import json
 import communication
 import node
+from block import get_balance_for_address
 
 TRANSACTIONS = deque()
 
@@ -25,8 +26,16 @@ def get_content():
 
 def add(transaction):
     """
-    Adds a transaction to the mining queue after validation.
+    Adds a transaction to the mining queue after validation and balance check.
     """
+    sender_address = transaction.get("sender_address")
+    amount = float(transaction.get("amount", 0))
+
+    # Sprawdzenie, czy nadawca ma wystarczające środki
+    if sender_address and get_balance_for_address(sender_address) < amount:
+        logger.error(f"Transaction rejected due to insufficient balance: {transaction}")
+        return
+
     if node.validate_transaction(transaction):
         logger.debug(f'Adding valid transaction to mine: {transaction}')
         TRANSACTIONS.append(transaction)
