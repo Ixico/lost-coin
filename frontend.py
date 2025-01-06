@@ -5,6 +5,8 @@ import block
 import miner
 import node
 import wallet
+from anytree.search import findall
+
 from common import STOP_EVENT, shutdown, handle_sigint
 
 
@@ -99,19 +101,38 @@ def setup_wallet():
     return None
 
 
+from anytree.search import findall  # Dodaj ten import
+
+
 def blockchain_view(user_id, identity_name, password, sender_address):
     """
-    Blockchain view showing user_id and user's address.
+    Blockchain view showing user_id, user's address, and block hashes with transaction details.
     """
     layout = [
-        [sg.Text(f"User ID: {user_id}, Identity: {identity_name}")],
-        [sg.Text("Your Address (SHA256):"), sg.InputText(sender_address, key="user_address", readonly=True)],
-        [sg.Text("Your Balance:"), sg.Text("0", key="user_balance")],
-        [sg.Text("Blockchain:")],
-        [sg.Listbox(values=[], size=(60, 10), key="block_list", select_mode=sg.LISTBOX_SELECT_MODE_SINGLE, enable_events=True)],
+        [sg.Text(f"User ID: {user_id}, Identity: {identity_name}", expand_x=True)],
+        [sg.Text("Your Address (SHA256):"),
+         sg.InputText(sender_address, key="user_address", readonly=True, expand_x=True)],
+        [sg.Text("Your Balance:"), sg.Text("0", key="user_balance", expand_x=True)],
+        [sg.Text("Blockchain (Block Hashes and Transactions):", expand_x=True)],
+        [sg.Listbox(
+            values=[],
+            size=(80, 20),  # Ustawienia początkowego rozmiaru komponentu
+            key="block_list",
+            select_mode=sg.LISTBOX_SELECT_MODE_SINGLE,
+            expand_x=True,
+            expand_y=True,
+            enable_events=True
+        )],
         [sg.Button("Publish Transaction"), sg.Button("Refresh Balance"), sg.Button("Exit")]
     ]
-    window = sg.Window("Blockchain Node", layout)
+    window = sg.Window(
+        "Blockchain Node",
+        layout,
+        resizable=True,  # Allow window resizing
+        finalize=True,  # Needed to use expand options effectively
+    )
+    # Ensure resizing behavior works
+    window['block_list'].expand(expand_x=True, expand_y=True)
 
     while not STOP_EVENT.is_set():
         event, values = window.read(timeout=100)
@@ -140,7 +161,22 @@ def blockchain_view(user_id, identity_name, password, sender_address):
                 window["user_balance"].update(str(balance))
             except Exception as e:
                 sg.popup(f"Error refreshing balance: {str(e)}")
-        window["block_list"].update(values=block.get_blocks_content())
+
+        # Fetch hashes and transaction data for display
+        transactions = []
+        leaves = findall(block.GENESIS, filter_=lambda node: node.is_leaf)
+        for leaf in leaves:
+            current = leaf
+            while current is not None:
+                block_hash = block.hash_block(current.body)
+                transactions.append(f"Block: {block_hash}")
+                for tx in current.body['content']:
+                    transactions.append(f"  Transaction: {tx}")
+                current = current.parent
+
+        # Reverse to show blocks in chronological order
+        transactions.reverse()
+        window["block_list"].update(values=transactions)
     window.close()
 
 
