@@ -2,7 +2,7 @@ import hashlib
 import json
 from datetime import datetime
 
-from anytree import Node
+from anytree import Node, RenderTree, AsciiStyle
 from anytree.search import findall, find
 
 from common import logger
@@ -52,6 +52,7 @@ def add_if_valid(block):
         return
     logger.debug(f"Adding block to chain: {block}")
     Node(name=hash_block(block), parent=leaf, body=block)
+    print(RenderTree(GENESIS, style=AsciiStyle()).by_attr())
 
 
 def is_mined(block):
